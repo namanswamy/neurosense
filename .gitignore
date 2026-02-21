@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Database (created at runtime)
+*.db
+
+# Environment variables
+.env
+
+# Python virtual environment
+Lib/
+Scripts/
+__pycache__/
+*.pyc
+ml/Lib/
+ml/Scripts/
+ml/__pycache__/
+pyvenv.cfg
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,2214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroSense — Autism Sensory Health Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg:      #080c16;
+      --bg2:     #0f1523;
+      --bg3:     #151d30;
+      --bg3h:    #1a2440;
+      --bg4:     #1e2a48;
+      --bgi:     #121a2e;
+      --t1:      #e4e9f2;
+      --t2:      #8794ab;
+      --t3:      #4f5d75;
+      --cyan:    #38d9f5;
+      --cyang:   rgba(56, 217, 245, .12);
+      --amber:   #f5a623;
+      --amberg:  rgba(245, 166, 35, .12);
+      --red:     #f55050;
+      --redg:    rgba(245, 80, 80, .12);
+      --green:   #3dd68c;
+      --greeng:  rgba(61, 214, 140, .12);
+      --violet:  #a78bfa;
+      --violetg: rgba(167, 139, 250, .12);
+      --teal:    #2dd4bf;
+      --tealg:   rgba(45, 212, 191, .12);
+      --rose:    #fb7185;
+      --roseg:   rgba(251, 113, 133, .12);
+      --bd:      rgba(255, 255, 255, .06);
+      --bdh:     rgba(255, 255, 255, .12);
+      --r1:  8px;
+      --r2:  14px;
+      --r3:  22px;
+      --fd:  'Playfair Display', Georgia, serif;
+      --fb:  'DM Sans', sans-serif;
+      --tr:  all .3s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--fb);
+      background: var(--bg);
+      color: var(--t1);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--t3); border-radius: 3px; }
+
+    /* ── Ambient background ── */
+    .ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 800px 500px at 10% 15%, rgba(56, 217, 245, .03), transparent),
+        radial-gradient(ellipse 600px 600px at 90% 85%, rgba(167, 139, 250, .03), transparent);
+    }
+
+    /* ── Button ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 22px;
+      border-radius: var(--r1);
+      font-family: var(--fb);
+      font-size: 14px;
+      font-weight: 500;
+      border: 1px solid var(--bd);
+      background: var(--bg3);
+      color: var(--t1);
+      cursor: pointer;
+      transition: var(--tr);
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .btn:hover    { background: var(--bg3h); border-color: var(--bdh); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .btn-p {
+      background: linear-gradient(135deg, var(--cyan), #0891b2);
+      border: none;
+      color: #000;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(56, 217, 245, .2);
+    }
+    .btn-p:hover {
+      box-shadow: 0 6px 28px rgba(56, 217, 245, .35);
+      transform: translateY(-1px);
+    }
+    .btn-lg { padding: 14px 32px; font-size: 15px; border-radius: var(--r2); }
+
+    /* ── Form groups ── */
+    .fg { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .fg label { font-size: 13px; font-weight: 500; color: var(--t2); }
+    .fg input,
+    .fg select,
+    .fg textarea {
+      padding: 11px 14px;
+      background: var(--bgi);
+      border: 1px solid var(--bd);
+      border-radius: var(--r1);
+      color: var(--t1);
+      font-family: var(--fb);
+      font-size: 14px;
+      outline: none;
+      transition: var(--tr);
+      width: 100%;
+    }
+    .fg input:focus,
+    .fg select:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyang); }
+
+    .fr  { display: grid; grid-template-columns: 1fr 1fr;       gap: 16px; }
+    .fr3 { display: grid; grid-template-columns: 1fr 1fr 1fr;   gap: 16px; }
+
+    /* ── Checkbox ── */
+    .chk {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--bgi);
+      border-radius: var(--r1);
+      border: 1px solid var(--bd);
+      cursor: pointer;
+      transition: var(--tr);
+    }
+    .chk:hover { border-color: var(--bdh); }
+    .chk input[type=checkbox] { accent-color: var(--cyan); width: 18px; height: 18px; cursor: pointer; }
+    .chk label { font-size: 13px; cursor: pointer; flex: 1; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      background: var(--bg3);
+      color: var(--t1);
+      padding: 14px 24px;
+      border-radius: var(--r2);
+      border: 1px solid var(--bdh);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, .5);
+      font-size: 14px;
+      font-weight: 500;
+      animation: su .3s ease;
+      max-width: 400px;
+    }
+    .toast.error   { border-color: rgba(245, 80,  80,  .4); }
+    .toast.success { border-color: rgba(61,  214, 140, .4); }
+
+    /* ── Pages ── */
+    .page        { display: none; position: relative; z-index: 1; min-height: 100vh; }
+    .page.active { display: block; }
+
+    /* ── Auth ── */
+    .auth-p        { display: none; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; }
+    .auth-p.active { display: flex; }
+    .auth-c        { width: 100%; max-width: 460px; animation: fu .5s ease; }
+
+    .auth-logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      justify-content: center;
+      margin-bottom: 36px;
+    }
+    .auth-li {
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, var(--cyan), var(--violet));
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      box-shadow: 0 8px 32px rgba(56, 217, 245, .2);
+    }
+    .auth-lt {
+      font-family: var(--fd);
+      font-size: 32px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--cyan), var(--violet));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .auth-card {
+      background: var(--bg2);
+      border: 1px solid var(--bd);
+      border-radius: var(--r3);
+      padding: 36px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+    }
+    .auth-card h2   { font-family: var(--fd); font-size: 24px; margin-bottom: 6px; }
+    .auth-card .sub { color: var(--t3); font-size: 14px; margin-bottom: 28px; }
+
+    .auth-div {
+      text-align: center;
+      margin: 24px 0;
+      color: var(--t3);
+      font-size: 13px;
+      position: relative;
+    }
+    .auth-div::before,
+    .auth-div::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 40%;
+      height: 1px;
+      background: var(--bd);
+    }
+    .auth-div::before { left: 0; }
+    .auth-div::after  { right: 0; }
+
+    .auth-lk { color: var(--cyan); cursor: pointer; font-weight: 500; }
+    .auth-lk:hover { text-decoration: underline; }
+
+    /* ── Onboarding ── */
+    .ob-p        { display: none; min-height: 100vh; padding: 40px 24px; }
+    .ob-p.active { display: block; }
+    .ob-c        { max-width: 700px; margin: 0 auto; animation: fu .5s ease; }
+
+    .ob-h              { text-align: center; margin-bottom: 40px; }
+    .ob-h h1           { font-family: var(--fd); font-size: 28px; margin-bottom: 8px; }
+    .ob-h p            { color: var(--t2); font-size: 14px; }
+
+    .stepper { display: flex; justify-content: center; gap: 8px; margin-bottom: 36px; }
+    .sdot            { width: 40px; height: 5px; border-radius: 3px; background: var(--bg4); transition: var(--tr); }
+    .sdot.active     { background: var(--cyan); }
+    .sdot.done       { background: var(--green); }
+
+    .ob-card         { background: var(--bg2); border: 1px solid var(--bd); border-radius: var(--r3); padding: 32px; }
+    .ob-card h3      { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    .ob-card .ss     { color: var(--t3); font-size: 13px; margin-bottom: 24px; }
+
+    .sc              { display: none; }
+    .sc.active       { display: block; }
+    .sa              { display: flex; gap: 12px; margin-top: 28px; justify-content: flex-end; }
+
+    /* ── Questionnaire ── */
+    .qp        { display: none; min-height: 100vh; padding: 40px 24px; }
+    .qp.active { display: block; }
+    .qc        { max-width: 760px; margin: 0 auto; animation: fu .5s ease; }
+
+    .qh    { text-align: center; margin-bottom: 24px; }
+    .qh h1 { font-family: var(--fd); font-size: 26px; margin-bottom: 6px; }
+
+    .qpb  { background: var(--bg4); border-radius: 6px; height: 8px; overflow: hidden; margin-bottom: 32px; }
+    .qpbf { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--violet)); border-radius: 6px; transition: width .5s ease; width: 0%; }
+    .qpt  { text-align: center; font-size: 12px; color: var(--t3); margin-bottom: 8px; }
+
+    .qs        { display: none; }
+    .qs.active { display: block; animation: fu .3s ease; }
+
+    .qsh    { padding: 20px 24px; background: var(--bg2); border: 1px solid var(--bd); border-radius: var(--r2) var(--r2) 0 0; }
+    .qsh h3 { font-size: 17px; font-weight: 600; }
+    .qsh p  { font-size: 12px; color: var(--t3); margin-top: 4px; }
+    .qsi    { font-size: 28px; margin-bottom: 8px; }
+
+    .qq           { background: var(--bg2); border: 1px solid var(--bd); border-top: none; padding: 20px 24px; }
+    .qq:last-of-type { border-radius: 0 0 var(--r2) var(--r2); }
+    .qqt          { font-size: 14px; font-weight: 500; margin-bottom: 14px; line-height: 1.5; }
+    .qqh          { font-size: 12px; color: var(--t3); margin-bottom: 10px; font-style: italic; }
+
+    .qsc { display: flex; gap: 6px; flex-wrap: wrap; }
+    .qso {
+      flex: 1;
+      min-width: 48px;
+      padding: 10px 4px;
+      text-align: center;
+      background: var(--bgi);
+      border: 1.5px solid var(--bd);
+      border-radius: var(--r1);
+      cursor: pointer;
+      transition: var(--tr);
+      font-size: 12px;
+    }
+    .qso:hover  { border-color: var(--cyan); background: var(--cyang); }
+    .qso.sel    { border-color: var(--cyan); background: var(--cyang); color: var(--cyan); font-weight: 600; }
+    .qsv        { font-size: 16px; font-weight: 700; display: block; margin-bottom: 2px; }
+    .qsl        { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: var(--t3); }
+    .qn         { display: flex; justify-content: space-between; margin-top: 24px; }
+
+    /* ── Processing overlay ── */
+    .po        { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(8, 12, 22, .92); backdrop-filter: blur(8px); align-items: center; justify-content: center; flex-direction: column; gap: 24px; }
+    .po.active { display: flex; }
+
+    .po-brain {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, var(--cyan), var(--violet));
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      animation: pr 2s ease-in-out infinite;
+    }
+    @keyframes pr {
+      0%, 100% { transform: scale(1);   box-shadow: 0 0 30px rgba(56,  217, 245, .3); }
+      50%       { transform: scale(1.1); box-shadow: 0 0 50px rgba(167, 139, 250, .4); }
+    }
+
+    .po-t { font-family: var(--fd); font-size: 22px; }
+    .po-s { color: var(--t2); font-size: 14px; animation: fio 1.5s ease-in-out infinite; }
+    @keyframes fio { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+
+    .po-bc { width: 320px; height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; }
+    .po-b  { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--violet)); border-radius: 3px; transition: width .4s ease; width: 0%; }
+
+    /* ── App shell ── */
+    .app { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; position: relative; z-index: 1; }
+
+    /* ── Sidebar ── */
+    .sb {
+      background: var(--bg2);
+      border-right: 1px solid var(--bd);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .sbl  { display: flex; align-items: center; gap: 10px; padding: 0 8px; margin-bottom: 32px; }
+    .sbli {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--cyan), var(--violet));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .sblt {
+      font-family: var(--fd);
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--cyan), var(--violet));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .sblb {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--t3);
+      padding: 0 12px;
+      margin: 20px 0 8px;
+    }
+    .sbi {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--r1);
+      color: var(--t2);
+      cursor: pointer;
+      transition: var(--tr);
+      font-size: 13px;
+      border: 1px solid transparent;
+      margin-bottom: 2px;
+    }
+    .sbi:hover        { color: var(--t1); background: rgba(255, 255, 255, .03); }
+    .sbi.active       { color: var(--cyan); background: var(--cyang); border-color: rgba(56, 217, 245, .12); font-weight: 500; }
+    .sbi svg          { width: 18px; height: 18px; flex-shrink: 0; }
+
+    .sbf  { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--bd); }
+    .sbu  { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: var(--r1); }
+    .sbav {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--teal), var(--cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 13px;
+      color: #000;
+    }
+    .sbun { font-size: 13px; font-weight: 600; }
+    .sbue { font-size: 11px; color: var(--t3); }
+    .sblo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      margin-top: 8px;
+      border-radius: var(--r1);
+      color: var(--t3);
+      font-size: 12px;
+      cursor: pointer;
+      transition: var(--tr);
+    }
+    .sblo:hover { color: var(--red); background: var(--redg); }
+
+    /* ── Main content ── */
+    .mn { padding: 28px 32px; max-width: 1200px; }
+    .ds        { display: none; }
+    .ds.active { display: block; animation: fu .3s ease; }
+
+    .ph   { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+    .ph h1 { font-family: var(--fd); font-size: 26px; font-weight: 700; }
+    .ph p  { color: var(--t2); font-size: 13px; margin-top: 4px; }
+
+    /* ── Metric row ── */
+    .mr { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+    .mc {
+      background: var(--bg3);
+      border: 1px solid var(--bd);
+      border-radius: var(--r2);
+      padding: 18px;
+      transition: var(--tr);
+      position: relative;
+      overflow: hidden;
+    }
+    .mc::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .mc.c::before { background: linear-gradient(90deg, var(--cyan),   var(--teal)); }
+    .mc.a::before { background: linear-gradient(90deg, var(--amber),  #f59e0b); }
+    .mc.r::before { background: linear-gradient(90deg, var(--red),    var(--rose)); }
+    .mc.g::before { background: linear-gradient(90deg, var(--green),  #22c55e); }
+    .mc.v::before { background: linear-gradient(90deg, var(--violet), #8b5cf6); }
+    .mc:hover { border-color: var(--bdh); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0, 0, 0, .3); }
+    .mci { font-size: 20px; margin-bottom: 12px; }
+    .mcv { font-family: var(--fd); font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+    .mcl { font-size: 12px; color: var(--t2); }
+
+    /* ── Grid layouts ── */
+    .g2   { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .card { background: var(--bg3); border: 1px solid var(--bd); border-radius: var(--r2); padding: 22px; transition: var(--tr); }
+    .card:hover { border-color: var(--bdh); }
+    .cf   { grid-column: 1 / -1; }
+    .ch   { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .ct   { font-size: 14px; font-weight: 600; }
+    .cs   { font-size: 11px; color: var(--t3); margin-top: 2px; }
+
+    /* ── Empty state ── */
+    .na  {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      text-align: center;
+      background: var(--bg3);
+      border: 2px dashed var(--bd);
+      border-radius: var(--r3);
+    }
+    .nai { font-size: 48px; margin-bottom: 16px; opacity: .5; }
+    .nat { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--t2); }
+    .nad { font-size: 13px; color: var(--t3); max-width: 400px; margin-bottom: 20px; line-height: 1.6; }
+
+    /* ── Results header ── */
+    .rh {
+      text-align: center;
+      padding: 40px;
+      background: linear-gradient(135deg, var(--cyang), var(--violetg));
+      border: 1px solid rgba(56, 217, 245, .15);
+      border-radius: var(--r3);
+      margin-bottom: 24px;
+    }
+    .rs  { font-family: var(--fd); font-size: 72px; font-weight: 700; line-height: 1; }
+    .rl  { font-size: 14px; color: var(--t2); margin-top: 8px; }
+    .rlv { display: inline-block; padding: 8px 20px; border-radius: var(--r1); font-size: 14px; font-weight: 600; margin-top: 16px; }
+
+    /* ── Risk colours ── */
+    .rk-l  { background: var(--greeng); color: var(--green); }
+    .rk-lm { background: var(--tealg);  color: var(--teal); }
+    .rk-m  { background: var(--amberg); color: var(--amber); }
+    .rk-mh { background: var(--roseg);  color: var(--rose); }
+    .rk-h  { background: var(--redg);   color: var(--red); }
+
+    /* ── Recommendation list ── */
+    .rcl { display: flex; flex-direction: column; gap: 10px; }
+    .ri {
+      display: flex;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--bg4);
+      border-radius: var(--r1);
+      border-left: 3px solid transparent;
+      transition: var(--tr);
+    }
+    .ri.hi { border-left-color: var(--red); }
+    .ri.me { border-left-color: var(--amber); }
+    .ri.lo { border-left-color: var(--green); }
+    .ri:hover { background: rgba(255, 255, 255, .04); }
+
+    .rcc { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 2px 8px; border-radius: 4px; }
+    .ri.hi .rcc { background: var(--redg);   color: var(--red); }
+    .ri.me .rcc { background: var(--amberg); color: var(--amber); }
+    .ri.lo .rcc { background: var(--greeng); color: var(--green); }
+
+    .rct { font-size: 14px; font-weight: 600; margin: 6px 0 4px; }
+    .rcx { font-size: 13px; color: var(--t2); line-height: 1.55; }
+
+    /* ── Score bars ── */
+    .sbr  { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .sbl2 { font-size: 13px; width: 110px; text-align: right; color: var(--t2); flex-shrink: 0; }
+    .sbt  { flex: 1; height: 10px; background: var(--bg4); border-radius: 5px; overflow: hidden; position: relative; }
+    .sbf2 { height: 100%; border-radius: 5px; transition: width .8s ease; }
+    .sbv  { font-size: 13px; font-weight: 700; width: 40px; }
+
+    /* ── Report blocks ── */
+    .rb    { background: var(--bg4); border-radius: var(--r1); padding: 16px; margin-bottom: 12px; }
+    .rb h4 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+    .rb p  { font-size: 13px; color: var(--t2); line-height: 1.6; }
+
+    /* ── Disclaimer ── */
+    .disc {
+      background: var(--amberg);
+      border: 1px solid rgba(245, 166, 35, .2);
+      border-radius: var(--r1);
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      font-size: 12px;
+      color: var(--amber);
+      line-height: 1.5;
+    }
+
+    /* ── Remedial Plan (v2) ── */
+    .rp-overview {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px;
+    }
+    .rp-ov-card {
+      background: var(--bg3); border: 1px solid var(--bd); border-radius: var(--r2);
+      padding: 20px; text-align: center; position: relative; overflow: hidden;
+    }
+    .rp-ov-card::before { content:''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .rp-ov-card.hi::before { background: linear-gradient(90deg, var(--red), var(--rose)); }
+    .rp-ov-card.me::before { background: linear-gradient(90deg, var(--amber), #f59e0b); }
+    .rp-ov-card.lo::before { background: linear-gradient(90deg, var(--green), var(--teal)); }
+    .rp-ov-num { font-family: var(--fd); font-size: 36px; font-weight: 700; line-height: 1; }
+    .rp-ov-lbl { font-size: 12px; color: var(--t2); margin-top: 6px; }
+
+    .rp-tabs {
+      display: flex; gap: 4px; margin-bottom: 24px;
+      background: var(--bg3); border: 1px solid var(--bd); border-radius: var(--r2);
+      padding: 4px;
+    }
+    .rp-tab {
+      flex: 1; padding: 10px 16px; border-radius: 10px;
+      text-align: center; font-size: 13px; font-weight: 500;
+      color: var(--t2); cursor: pointer; transition: var(--tr);
+      border: 1px solid transparent;
+    }
+    .rp-tab:hover { color: var(--t1); background: rgba(255,255,255,.03); }
+    .rp-tab.active { color: var(--cyan); background: var(--cyang); border-color: rgba(56,217,245,.15); font-weight: 600; }
+    .rp-tab-count {
+      display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px;
+      border-radius: 10px; margin-left: 6px; background: var(--bg4); color: var(--t3);
+    }
+    .rp-tab.active .rp-tab-count { background: rgba(56,217,245,.2); color: var(--cyan); }
+
+    .rp-list { display: flex; flex-direction: column; gap: 16px; }
+
+    .rp-item {
+      background: var(--bg3); border: 1px solid var(--bd); border-radius: var(--r2);
+      overflow: hidden; transition: var(--tr);
+    }
+    .rp-item:hover { border-color: var(--bdh); }
+    .rp-item-bar { height: 3px; }
+    .rp-item-bar.hi { background: linear-gradient(90deg, var(--red), var(--rose)); }
+    .rp-item-bar.me { background: linear-gradient(90deg, var(--amber), #f59e0b); }
+    .rp-item-bar.lo { background: linear-gradient(90deg, var(--green), var(--teal)); }
+
+    .rp-item-hdr {
+      display: flex; align-items: center; gap: 14px; padding: 18px 20px;
+      cursor: pointer; transition: var(--tr);
+    }
+    .rp-item-hdr:hover { background: rgba(255,255,255,.015); }
+    .rp-item-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .rp-item-info { flex: 1; min-width: 0; }
+    .rp-item-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .rp-item-desc { font-size: 12px; color: var(--t3); line-height: 1.4; }
+    .rp-item-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+
+    .rp-badge {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .3px; padding: 3px 10px; border-radius: 20px;
+    }
+    .rp-badge.hi { background: var(--redg); color: var(--red); }
+    .rp-badge.me { background: var(--amberg); color: var(--amber); }
+    .rp-badge.lo { background: var(--greeng); color: var(--green); }
+    .rp-badge.cat { background: var(--bg4); color: var(--t2); }
+    .rp-badge.tf { background: var(--violetg); color: var(--violet); }
+
+    .rp-trigger {
+      display: flex; align-items: center; gap: 8px;
+      margin-left: auto; padding-left: 16px; flex-shrink: 0; text-align: right;
+    }
+    .rp-trigger-score {
+      font-family: var(--fd); font-size: 22px; font-weight: 700; line-height: 1;
+    }
+    .rp-trigger-label { font-size: 10px; color: var(--t3); }
+    .rp-item-arrow {
+      font-size: 11px; color: var(--t3); transition: transform .3s ease;
+      margin-left: 12px;
+    }
+    .rp-item.open .rp-item-arrow { transform: rotate(180deg); }
+
+    .rp-item-body {
+      display: none; padding: 0 20px 20px 78px;
+    }
+    .rp-item.open .rp-item-body { display: block; }
+
+    .rp-steps { list-style: none; display: flex; flex-direction: column; gap: 0; }
+    .rp-step {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--bd);
+      font-size: 13px; color: var(--t2); line-height: 1.5;
+    }
+    .rp-step:last-child { border-bottom: none; }
+    .rp-step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--bg4); border: 1px solid var(--bd);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: var(--cyan);
+      flex-shrink: 0;
+    }
+    .rp-step-text { flex: 1; padding-top: 2px; }
+
+    @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+    @media (max-width: 900px) {
+      .rp-overview { grid-template-columns: 1fr; }
+      .rp-item-body { padding-left: 20px; }
+      .rp-trigger { display: none; }
+    }
+
+    /* ── Full Report (Enhanced) ── */
+    .rep-hero {
+      text-align: center; padding: 48px 32px;
+      background: linear-gradient(135deg, rgba(56,217,245,.08), rgba(167,139,250,.08));
+      border: 1px solid rgba(56,217,245,.12); border-radius: var(--r3);
+      margin-bottom: 24px; position: relative; overflow: hidden;
+    }
+    .rep-hero::before {
+      content: ''; position: absolute; top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: conic-gradient(from 0deg, transparent 0%, rgba(56,217,245,.05) 25%, transparent 50%, rgba(167,139,250,.05) 75%, transparent 100%);
+      animation: rep-rotate 20s linear infinite;
+    }
+    @keyframes rep-rotate { to { transform: rotate(360deg); } }
+
+    .rep-score-ring {
+      position: relative; width: 160px; height: 160px;
+      margin: 0 auto 20px; z-index: 1;
+    }
+    .rep-score-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .rep-score-ring .ring-bg { fill: none; stroke: var(--bg4); stroke-width: 8; }
+    .rep-score-ring .ring-fg {
+      fill: none; stroke-width: 8; stroke-linecap: round;
+      transition: stroke-dashoffset 1.5s ease;
+    }
+    .rep-score-num {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; z-index: 2;
+    }
+    .rep-score-val { font-family: var(--fd); font-size: 48px; font-weight: 700; line-height: 1; }
+    .rep-score-lbl { font-size: 12px; color: var(--t2); margin-top: 4px; }
+
+    .rep-level-badge {
+      display: inline-block; padding: 8px 24px; border-radius: var(--r1);
+      font-size: 14px; font-weight: 600; margin-top: 12px; z-index: 1; position: relative;
+    }
+
+    .rep-toc {
+      display: flex; gap: 6px; margin-bottom: 24px; flex-wrap: wrap;
+      padding: 14px 18px; background: var(--bg3); border: 1px solid var(--bd);
+      border-radius: var(--r2);
+    }
+    .rep-toc-item {
+      padding: 7px 16px; border-radius: 20px; font-size: 12px;
+      font-weight: 500; color: var(--t2); cursor: pointer;
+      transition: var(--tr); border: 1px solid transparent;
+      text-decoration: none;
+    }
+    .rep-toc-item:hover { color: var(--cyan); background: var(--cyang); border-color: rgba(56,217,245,.15); }
+
+    .rep-section {
+      background: var(--bg3); border: 1px solid var(--bd);
+      border-radius: var(--r2); margin-bottom: 16px; overflow: hidden;
+    }
+    .rep-sec-hdr {
+      display: flex; align-items: center; gap: 12px;
+      padding: 18px 22px; cursor: pointer; transition: var(--tr);
+    }
+    .rep-sec-hdr:hover { background: rgba(255,255,255,.02); }
+    .rep-sec-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .rep-sec-title { font-size: 15px; font-weight: 600; flex: 1; }
+    .rep-sec-arrow {
+      font-size: 12px; color: var(--t3); transition: transform .3s ease;
+    }
+    .rep-section.open .rep-sec-arrow { transform: rotate(180deg); }
+    .rep-sec-body { padding: 0 22px 22px; }
+
+    .rep-summary-quote {
+      padding: 20px 24px; background: var(--bg4); border-radius: var(--r1);
+      border-left: 3px solid var(--cyan); font-size: 13px; color: var(--t2);
+      line-height: 1.7; font-style: italic;
+    }
+
+    .rep-ch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 900px) { .rep-ch-grid { grid-template-columns: 1fr; } }
+
+    .rep-ch-card {
+      display: flex; gap: 16px; padding: 18px;
+      background: var(--bg4); border-radius: var(--r1);
+      border: 1px solid var(--bd); transition: var(--tr);
+    }
+    .rep-ch-card:hover { border-color: var(--bdh); }
+
+    .rep-ch-circle {
+      width: 56px; height: 56px; position: relative; flex-shrink: 0;
+    }
+    .rep-ch-circle svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .rep-ch-circle .ch-bg { fill: none; stroke: var(--bg3); stroke-width: 5; }
+    .rep-ch-circle .ch-fg { fill: none; stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+    .rep-ch-val {
+      position: absolute; inset: 0; display: flex; align-items: center;
+      justify-content: center; font-size: 14px; font-weight: 700;
+    }
+
+    .rep-ch-info { flex: 1; min-width: 0; }
+    .rep-ch-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .rep-ch-sev {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 2px 8px; border-radius: 10px; margin-bottom: 6px;
+    }
+    .rep-ch-desc { font-size: 12px; color: var(--t3); line-height: 1.5; }
+
+    .rep-dom-bars { display: flex; flex-direction: column; gap: 16px; }
+    .rep-dom-item { display: flex; align-items: center; gap: 14px; }
+    .rep-dom-label { width: 140px; font-size: 13px; font-weight: 500; color: var(--t2); text-align: right; flex-shrink: 0; }
+    .rep-dom-track { flex: 1; height: 12px; background: var(--bg4); border-radius: 6px; overflow: hidden; position: relative; }
+    .rep-dom-fill { height: 100%; border-radius: 6px; transition: width 1s ease; position: relative; }
+    .rep-dom-fill::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.15) 50%, transparent 100%);
+      animation: shimmer 2s ease-in-out infinite;
+    }
+    @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+    .rep-dom-score { width: 50px; font-size: 14px; font-weight: 700; }
+    .rep-dom-sev { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+
+    .rep-nn {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0; padding: 24px 0; overflow-x: auto;
+    }
+    .rep-nn-layer {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      position: relative; z-index: 1;
+    }
+    .rep-nn-box {
+      width: 80px; padding: 14px 8px; text-align: center;
+      background: var(--bg4); border: 1.5px solid var(--bd);
+      border-radius: var(--r1); transition: var(--tr);
+    }
+    .rep-nn-box:hover { border-color: var(--cyan); background: var(--cyang); }
+    .rep-nn-box-lbl { font-size: 10px; color: var(--t3); margin-bottom: 4px; }
+    .rep-nn-box-val { font-size: 13px; font-weight: 700; color: var(--cyan); }
+    .rep-nn-box-sz { font-size: 10px; color: var(--t3); margin-top: 3px; }
+    .rep-nn-conn {
+      width: 40px; height: 2px; background: linear-gradient(90deg, var(--cyan), var(--violet));
+      position: relative; opacity: .5;
+    }
+    .rep-nn-conn::before {
+      content: '→'; position: absolute; top: -9px; right: -2px;
+      font-size: 12px; color: var(--violet);
+    }
+
+    .rep-meta-strip {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px;
+    }
+    .rep-meta-item {
+      padding: 6px 14px; background: var(--bg4); border-radius: 20px;
+      font-size: 11px; color: var(--t2); border: 1px solid var(--bd);
+    }
+    .rep-meta-item strong { color: var(--t1); font-weight: 600; }
+
+    .rep-print-bar {
+      display: flex; justify-content: center; gap: 12px;
+      padding: 20px; margin-top: 8px;
+    }
+
+    /* ── Animations ── */
+    @keyframes fu { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes su { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    .ai { animation: fu .4s ease forwards; opacity: 0; }
+    .ai:nth-child(1) { animation-delay: .05s; }
+    .ai:nth-child(2) { animation-delay: .10s; }
+    .ai:nth-child(3) { animation-delay: .15s; }
+    .ai:nth-child(4) { animation-delay: .20s; }
+
+    /* ── Responsive ── */
+    @media (max-width: 1100px) {
+      .mr              { grid-template-columns: repeat(2, 1fr); }
+      .g2, .fr3        { grid-template-columns: 1fr; }
+      .fr              { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .app      { grid-template-columns: 1fr; }
+      .sb       { display: none; }
+      .mn       { padding: 20px 16px; }
+      .auth-card { padding: 24px; }
+      .ob-card  { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="ambient"></div>
+
+<!-- Processing overlay -->
+<div class="po" id="po">
+  <div class="po-brain">🧠</div>
+  <div class="po-t">NeuroSense AI Engine</div>
+  <div class="po-s" id="poS">Initializing...</div>
+  <div class="po-bc"><div class="po-b" id="poB"></div></div>
+</div>
+
+<!-- ════════════════════════════════════════
+     LOGIN
+════════════════════════════════════════ -->
+<div class="auth-p active" id="pg-login">
+  <div class="auth-c">
+    <div class="auth-logo">
+      <div class="auth-li">🧠</div>
+      <div class="auth-lt">NeuroSense</div>
+    </div>
+    <div class="auth-card">
+      <h2>Welcome Back</h2>
+      <p class="sub">Sign in to your sensory health dashboard</p>
+      <form onsubmit="doLogin(event)">
+        <div class="fg">
+          <label>Email</label>
+          <input type="email" id="liE" placeholder="you@example.com" required>
+        </div>
+        <div class="fg">
+          <label>Password</label>
+          <input type="password" id="liP" placeholder="Your password" required>
+        </div>
+        <button type="submit" class="btn btn-p btn-lg" style="width:100%;margin-top:8px">Sign In</button>
+      </form>
+      <div class="auth-div">or</div>
+      <p style="text-align:center;font-size:14px">
+        Don't have an account? <span class="auth-lk" onclick="sp('pg-signup')">Create one</span>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SIGNUP
+════════════════════════════════════════ -->
+<div class="auth-p" id="pg-signup">
+  <div class="auth-c">
+    <div class="auth-logo">
+      <div class="auth-li">🧠</div>
+      <div class="auth-lt">NeuroSense</div>
+    </div>
+    <div class="auth-card">
+      <h2>Create Account</h2>
+      <p class="sub">Start your sensory health journey</p>
+      <form onsubmit="doSignup(event)">
+        <div class="fr">
+          <div class="fg"><label>First Name</label><input type="text" id="suF" required></div>
+          <div class="fg"><label>Last Name</label>  <input type="text" id="suL" required></div>
+        </div>
+        <div class="fg"><label>Email</label><input type="email" id="suE" required></div>
+        <div class="fg">
+          <label>Password (min 6 chars)</label>
+          <input type="password" id="suP" minlength="6" required>
+        </div>
+        <button type="submit" class="btn btn-p btn-lg" style="width:100%;margin-top:8px">Create Account</button>
+      </form>
+      <div class="auth-div">or</div>
+      <p style="text-align:center;font-size:14px">
+        Have an account? <span class="auth-lk" onclick="sp('pg-login')">Sign in</span>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     ONBOARDING
+════════════════════════════════════════ -->
+<div class="ob-p" id="pg-ob">
+  <div class="ob-c">
+    <div class="ob-h">
+      <div style="font-size:40px;margin-bottom:12px">🧠</div>
+      <h1>Let's Set Up Your Profile</h1>
+      <p>Basic information for personalized analysis</p>
+    </div>
+
+    <div class="stepper">
+      <div class="sdot active" id="sd0"></div>
+      <div class="sdot"        id="sd1"></div>
+    </div>
+
+    <div class="ob-card">
+
+      <!-- Step 0 — Personal details -->
+      <div class="sc active" id="os0">
+        <h3>👤 Personal Details</h3>
+        <p class="ss">Basic demographic information</p>
+        <div class="fr">
+          <div class="fg">
+            <label>Date of Birth</label>
+            <input type="date" id="obDob">
+          </div>
+          <div class="fg">
+            <label>Gender</label>
+            <select id="obGen">
+              <option value="">Select...</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="non-binary">Non-Binary</option>
+              <option value="prefer-not">Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Phone (optional)</label>
+          <input type="tel" id="obPh" placeholder="+91 98765 43210">
+        </div>
+        <div class="sa">
+          <button class="btn btn-p" onclick="obNext()">Continue →</button>
+        </div>
+      </div>
+
+      <!-- Step 1 — Health profile -->
+      <div class="sc" id="os1">
+        <h3>🏥 Health Profile</h3>
+        <p class="ss">Health data for personalized analysis</p>
+        <div class="fr3">
+          <div class="fg"><label>Height (cm)</label><input type="number" id="obHt" placeholder="170"></div>
+          <div class="fg"><label>Weight (kg)</label><input type="number" id="obWt" placeholder="65"></div>
+          <div class="fg">
+            <label>Blood Group</label>
+            <select id="obBl">
+              <option value="">Select...</option>
+              <option>A+</option><option>A-</option>
+              <option>B+</option><option>B-</option>
+              <option>AB+</option><option>AB-</option>
+              <option>O+</option><option>O-</option>
+              <option>Unknown</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Known Medical Conditions</label>
+          <input type="text" id="obCon" placeholder="e.g., ADHD, Anxiety, None">
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Medications</label><input type="text" id="obMed" placeholder="e.g., None"></div>
+          <div class="fg"><label>Allergies</label>  <input type="text" id="obAll" placeholder="e.g., None"></div>
+        </div>
+
+        <div style="font-size:13px;font-weight:600;margin:20px 0 10px">Family History</div>
+        <div class="fr3">
+          <div class="chk"><input type="checkbox" id="obFA"><label for="obFA">Autism</label></div>
+          <div class="chk"><input type="checkbox" id="obFD"><label for="obFD">ADHD</label></div>
+          <div class="chk"><input type="checkbox" id="obFS"><label for="obFS">Sensory issues</label></div>
+        </div>
+
+        <div class="fr3" style="margin-top:16px">
+          <div class="fg">
+            <label>Sleep (hrs/night)</label>
+            <input type="number" id="obSl" placeholder="7" step="0.5" min="0" max="16">
+          </div>
+          <div class="fg">
+            <label>Exercise</label>
+            <select id="obEx">
+              <option value="">Select...</option>
+              <option value="daily">Daily</option>
+              <option value="3-5x">3-5x/week</option>
+              <option value="1-2x">1-2x/week</option>
+              <option value="rarely">Rarely</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Diet</label>
+            <select id="obDi">
+              <option value="">Select...</option>
+              <option value="regular">Regular</option>
+              <option value="vegetarian">Vegetarian</option>
+              <option value="vegan">Vegan</option>
+              <option value="gluten-free">Gluten-Free</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sa">
+          <button class="btn"       onclick="obPrev()">← Back</button>
+          <button class="btn btn-p" onclick="obDone()">Complete Setup ✓</button>
+        </div>
+      </div>
+
+    </div><!-- /.ob-card -->
+  </div><!-- /.ob-c -->
+</div><!-- /#pg-ob -->
+
+<!-- ════════════════════════════════════════
+     QUESTIONNAIRE
+════════════════════════════════════════ -->
+<div class="qp" id="pg-q">
+  <div class="qc">
+    <div style="margin-bottom: 16px;">
+      <button class="btn" onclick="cancelQ()">← Back to Dashboard</button>
+    </div>
+    <div class="qh">
+      <div style="font-size:36px;margin-bottom:10px">📋</div>
+      <h1>Sensory &amp; Behavioral Assessment</h1>
+      <p style="color:var(--t2);font-size:13px;margin-top:6px">
+        Comprehensive questionnaire — 11 sections, ~40 questions
+      </p>
+    </div>
+
+    <div class="disc">
+      ⚠️ <strong>Disclaimer:</strong> This is a research-grade screening tool, not a clinical diagnosis.
+      Discuss results with a qualified healthcare professional.
+    </div>
+
+    <div class="qpt" id="qpT">Section 1 of 11</div>
+    <div class="qpb"><div class="qpbf" id="qpB"></div></div>
+
+    <div id="qBox"></div>
+
+    <div class="qn">
+      <button class="btn"       id="qPB" onclick="qPrev()" style="visibility:hidden">← Previous</button>
+      <button class="btn btn-p" id="qNB" onclick="qNext()">Next Section →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     DASHBOARD
+════════════════════════════════════════ -->
+<div class="page" id="pg-dash">
+  <div class="app">
+
+    <!-- Sidebar -->
+    <aside class="sb">
+      <div class="sbl">
+        <div class="sbli">🧠</div>
+        <div class="sblt">NeuroSense</div>
+      </div>
+
+      <div class="sblb">Overview</div>
+      <div class="sbi active" data-d="ov"  onclick="sd('ov')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3"  y="3"  width="7" height="7" rx="1"/>
+          <rect x="14" y="3"  width="7" height="7" rx="1"/>
+          <rect x="3"  y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        Dashboard
+      </div>
+      <div class="sbi" data-d="res" onclick="sd('res')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+        AI Results
+      </div>
+      <div class="sbi" data-d="sen" onclick="sd('sen')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 16v-4"/><path d="M12 8h.01"/>
+        </svg>
+        Sensory Profile
+      </div>
+
+      <div class="sblb">Tools</div>
+      <div class="sbi" data-d="rec" onclick="sd('rec')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        Remedial Plan
+      </div>
+      <div class="sbi" data-d="rep" onclick="sd('rep')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        Full Report
+      </div>
+      <div class="sbi" onclick="startQ()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+        </svg>
+        Retake Assessment
+      </div>
+
+      <div class="sbf">
+        <div class="sbu">
+          <div class="sbav" id="dAv">?</div>
+          <div>
+            <div class="sbun" id="dNm">...</div>
+            <div class="sbue" id="dEm">...</div>
+          </div>
+        </div>
+        <div class="sblo" onclick="doLogout()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Sign Out
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="mn">
+
+      <!-- Overview -->
+      <div class="ds active" id="d-ov">
+        <div class="ph">
+          <div>
+            <h1 id="dGr">Dashboard</h1>
+            <p  id="dSub">Your sensory health overview</p>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn"       onclick="sd('rep')">📄 Report</button>
+            <button class="btn btn-p" id="bML" onclick="runML()">🤖 Run AI Analysis</button>
+          </div>
+        </div>
+
+        <div id="ovNA">
+          <div class="na">
+            <div class="nai">🔍</div>
+            <div class="nat">No Assessment Data Yet</div>
+            <div class="nad">
+              Complete the sensory &amp; behavioral assessment to receive your AI-powered autism
+              spectrum analysis, personalized sensory profile, and remedial plan.
+            </div>
+            <button class="btn btn-p btn-lg" onclick="startQ()">📋 Start Assessment</button>
+          </div>
+        </div>
+
+        <div id="ovF" style="display:none">
+          <div class="mr" id="ovM"></div>
+          <div class="g2">
+            <div class="card">
+              <div class="ch"><div><div class="ct">Sensory Channels</div><div class="cs">Sensitivity levels</div></div></div>
+              <div id="ovSB"></div>
+            </div>
+            <div class="card">
+              <div class="ch"><div><div class="ct">Domain Scores</div><div class="cs">Behavioral areas</div></div></div>
+              <div id="ovDB"></div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:20px">
+            <div class="ch">
+              <div><div class="ct">Top Priority Recommendations</div></div>
+              <button class="btn" onclick="sd('rec')" style="font-size:12px;padding:6px 12px">View All →</button>
+            </div>
+            <div id="ovRC" class="rcl"></div>
+          </div>
+        </div>
+      </div><!-- /#d-ov -->
+
+      <!-- AI Results -->
+      <div class="ds" id="d-res">
+        <div class="ph"><div><h1>AI/ML Analysis Results</h1><p>Neural network autism spectrum assessment</p></div></div>
+        <div id="resC"></div>
+      </div>
+
+      <!-- Sensory profile -->
+      <div class="ds" id="d-sen">
+        <div class="ph"><div><h1>Sensory Profile</h1><p>Detailed channel analysis</p></div></div>
+        <div id="senC"></div>
+      </div>
+
+      <!-- Recommendations -->
+      <div class="ds" id="d-rec">
+        <div class="ph"><div><h1>Remedial Plan</h1><p>AI-generated support strategies</p></div></div>
+        <div id="recC"></div>
+      </div>
+
+      <!-- Full report -->
+      <div class="ds" id="d-rep">
+        <div class="ph"><div><h1>Detailed Report</h1><p>Complete analysis</p></div></div>
+        <div id="repC"></div>
+      </div>
+
+    </main>
+  </div>
+</div><!-- /#pg-dash -->
+
+<script>
+  // ─────────────────────────────────────────────
+  // State
+  // ─────────────────────────────────────────────
+  let U  = null;  // current user
+  let ML = null;  // ML results
+
+  // ─────────────────────────────────────────────
+  // API helper
+  // ─────────────────────────────────────────────
+  async function api(u, m = 'GET', b = null) {
+    const o = { method: m, headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' };
+    if (b) o.body = JSON.stringify(b);
+    const r = await fetch(u, o);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed');
+    return d;
+  }
+
+  // ─────────────────────────────────────────────
+  // Toast
+  // ─────────────────────────────────────────────
+  function toast(m, t = 'success') {
+    const e = document.createElement('div');
+    e.className  = 'toast ' + t;
+    e.textContent = m;
+    document.body.appendChild(e);
+    setTimeout(() => {
+      e.style.opacity    = '0';
+      e.style.transition = 'opacity .3s';
+      setTimeout(() => e.remove(), 300);
+    }, 3500);
+  }
+
+  // ─────────────────────────────────────────────
+  // Page switcher
+  // ─────────────────────────────────────────────
+  function sp(id) {
+    document.querySelectorAll('.auth-p, .ob-p, .qp, .page').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  // ─────────────────────────────────────────────
+  // Auth
+  // ─────────────────────────────────────────────
+  async function doLogin(e) {
+    e.preventDefault();
+    try {
+      const d = await api('/api/auth/login', 'POST', {
+        email:    document.getElementById('liE').value,
+        password: document.getElementById('liP').value,
+      });
+      U = d.user;
+      toast('Welcome back, ' + U.first_name + '!');
+      route();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  async function doSignup(e) {
+    e.preventDefault();
+    try {
+      const d = await api('/api/auth/signup', 'POST', {
+        email:      document.getElementById('suE').value,
+        password:   document.getElementById('suP').value,
+        first_name: document.getElementById('suF').value,
+        last_name:  document.getElementById('suL').value,
+      });
+      U = d.user;
+      toast('Account created!');
+      route();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  async function doLogout() {
+    await api('/api/auth/logout', 'POST');
+    U  = null;
+    ML = null;
+    sp('pg-login');
+    toast('Signed out');
+  }
+
+  function route() {
+    if (!U)                      { sp('pg-login'); return; }
+    if (!U.onboarding_complete)  { sp('pg-ob');    return; }
+    showDash();
+  }
+
+  // ─────────────────────────────────────────────
+  // Onboarding
+  // ─────────────────────────────────────────────
+  let obS = 0;
+
+  function obNext() { obS++; obUI(); }
+  function obPrev() { obS--; obUI(); }
+
+  function obUI() {
+    document.querySelectorAll('.sc').forEach((e, i) => e.classList.toggle('active', i === obS));
+    document.querySelectorAll('.sdot').forEach((e, i) => {
+      e.classList.remove('active', 'done');
+      if (i < obS)  e.classList.add('done');
+      if (i === obS) e.classList.add('active');
+    });
+  }
+
+  async function obDone() {
+    try {
+      await api('/api/onboarding/personal', 'POST', {
+        date_of_birth: document.getElementById('obDob').value,
+        gender:        document.getElementById('obGen').value,
+        phone:         document.getElementById('obPh').value,
+      });
+      await api('/api/onboarding/health', 'POST', {
+        height_cm:             parseFloat(document.getElementById('obHt').value) || null,
+        weight_kg:             parseFloat(document.getElementById('obWt').value) || null,
+        blood_group:           document.getElementById('obBl').value,
+        known_conditions:      document.getElementById('obCon').value,
+        medications:           document.getElementById('obMed').value,
+        allergies:             document.getElementById('obAll').value,
+        family_history_autism: document.getElementById('obFA').checked,
+        family_history_adhd:   document.getElementById('obFD').checked,
+        family_history_sensory:document.getElementById('obFS').checked,
+        sleep_hours:           parseFloat(document.getElementById('obSl').value) || null,
+        exercise_frequency:    document.getElementById('obEx').value,
+        diet_type:             document.getElementById('obDi').value,
+      });
+      U.onboarding_complete = 1;
+      toast('Profile saved!');
+      showDash();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  // ─────────────────────────────────────────────
+  // Questionnaire data
+  // ─────────────────────────────────────────────
+  const Q = [
+    {
+      id: 'sensory_visual', icon: '👁️', title: 'Visual Sensitivity', desc: 'Response to lights, colors, patterns',
+      q: [
+        { id: 'sv1', t: 'I am bothered by bright lights or fluorescent lighting.' },
+        { id: 'sv2', t: 'Visual clutter makes it hard to focus.' },
+        { id: 'sv3', t: 'Flickering lights cause discomfort or distress.' },
+        { id: 'sv4', t: 'I prefer dim or natural lighting.' },
+      ],
+    },
+    {
+      id: 'sensory_auditory', icon: '👂', title: 'Auditory Sensitivity', desc: 'Response to sounds and noise',
+      q: [
+        { id: 'sa1', t: 'Everyday sounds feel uncomfortably loud.' },
+        { id: 'sa2', t: 'I struggle to filter background noise.' },
+        { id: 'sa3', t: 'Sudden noises startle me significantly.' },
+        { id: 'sa4', t: 'I often cover my ears or use headphones to block sound.' },
+      ],
+    },
+    {
+      id: 'sensory_tactile', icon: '✋', title: 'Tactile Sensitivity', desc: 'Response to touch and textures',
+      q: [
+        { id: 'st1', t: 'Certain fabrics or clothing tags cause discomfort.' },
+        { id: 'st2', t: 'Light touch is uncomfortable or startling.' },
+        { id: 'st3', t: 'I am particular about water temperature.' },
+        { id: 'st4', t: 'I avoid certain food textures.' },
+      ],
+    },
+    {
+      id: 'sensory_olfactory', icon: '👃', title: 'Olfactory Sensitivity', desc: 'Response to smells',
+      q: [
+        { id: 'so1', t: "I notice smells others don't detect." },
+        { id: 'so2', t: 'Strong smells cause nausea or avoidance.' },
+        { id: 'so3', t: 'Certain smells trigger strong reactions.' },
+      ],
+    },
+    {
+      id: 'sensory_vestibular', icon: '🏃', title: 'Vestibular Response', desc: 'Movement and balance',
+      q: [
+        { id: 'sve1', t: 'I feel dizzy easily from movement.' },
+        { id: 'sve2', t: 'I have balance difficulties.' },
+        { id: 'sve3', t: 'I seek or avoid spinning/rocking activities.' },
+      ],
+    },
+    {
+      id: 'sensory_proprioceptive', icon: '💪', title: 'Proprioceptive Awareness', desc: 'Body position and force',
+      q: [
+        { id: 'sp1', t: 'I often bump into things.' },
+        { id: 'sp2', t: 'I use too much or too little force.' },
+        { id: 'sp3', t: 'I seek deep pressure (heavy blankets, tight hugs).' },
+      ],
+    },
+    {
+      id: 'sensory_interoceptive', icon: '🫀', title: 'Interoceptive Awareness', desc: 'Internal body signals',
+      q: [
+        { id: 'si1', t: "I don't notice hunger until extreme." },
+        { id: 'si2', t: 'I struggle to recognize bathroom urgency.' },
+        { id: 'si3', t: 'I have trouble identifying my emotional state.' },
+      ],
+    },
+    {
+      id: 'social_communication', icon: '💬', title: 'Social Communication', desc: 'Social interaction patterns',
+      q: [
+        { id: 'sc1', t: 'I find sarcasm and non-literal language difficult.' },
+        { id: 'sc2', t: 'Eye contact feels uncomfortable.' },
+        { id: 'sc3', t: 'I struggle to read body language.' },
+        { id: 'sc4', t: 'Small talk feels pointless.' },
+        { id: 'sc5', t: 'I struggle with turn-taking in conversations.' },
+      ],
+    },
+    {
+      id: 'repetitive_behaviors', icon: '🔄', title: 'Repetitive Behaviors', desc: 'Routines and restricted interests',
+      q: [
+        { id: 'rb1', t: 'Unexpected routine changes cause distress.' },
+        { id: 'rb2', t: 'I engage in repetitive movements (rocking, fidgeting).' },
+        { id: 'rb3', t: 'I have intense focused interests.' },
+        { id: 'rb4', t: 'I prefer doing things the same way each time.' },
+      ],
+    },
+    {
+      id: 'emotional_regulation', icon: '🎭', title: 'Emotional Regulation', desc: 'Managing emotions',
+      q: [
+        { id: 'er1', t: 'I experience emotions very intensely.' },
+        { id: 'er2', t: 'It takes me long to calm down after being upset.' },
+        { id: 'er3', t: 'I experience shutdowns when overwhelmed.' },
+        { id: 'er4', t: 'I experience meltdowns when overloaded.' },
+      ],
+    },
+    {
+      id: 'executive_function', icon: '🧩', title: 'Executive Function', desc: 'Planning and organization',
+      q: [
+        { id: 'ef1', t: 'Planning multi-step tasks is difficult.' },
+        { id: 'ef2', t: 'Switching between tasks is challenging.' },
+        { id: 'ef3', t: 'I lose track of time often.' },
+        { id: 'ef4', t: 'I struggle to start overwhelming tasks.' },
+      ],
+    },
+  ];
+
+  // ─────────────────────────────────────────────
+  // Questionnaire logic
+  // ─────────────────────────────────────────────
+  let qI = 0;
+  let qR = {};
+
+  function startQ() { qI = 0; qR = {}; renderQ(); sp('pg-q'); }
+
+  function renderQ() {
+    const c = document.getElementById('qBox');
+    c.innerHTML = '';
+    Q.forEach((s, si) => {
+      let h = `<div class="qs${si === 0 ? ' active' : ''}" id="qs${si}">
+        <div class="qsh">
+          <div class="qsi">${s.icon}</div>
+          <h3>${s.title}</h3>
+          <p>${s.desc}</p>
+        </div>`;
+
+      s.q.forEach((q, qi) => {
+        const k = s.id + '__' + q.id;
+        h += `<div class="qq">
+          <div class="qqt">${qi + 1}. ${q.t}</div>
+          <div class="qsc" id="sc_${k}">`;
+        for (let v = 0; v <= 10; v++) {
+          h += `<div class="qso" onclick="qSel('${k}',${v},'${s.id}','${q.id}',\`${q.t.replace(/`/g, "'")}\`)">
+            <span class="qsv">${v}</span>
+          </div>`;
+        }
+        h += `</div>
+          <div class="qsl"><span>Never / Not at all</span><span>Sometimes</span><span>Always / Extremely</span></div>
+        </div>`;
+      });
+
+      h += '</div>';
+      c.innerHTML += h;
+    });
+    qPU();
+  }
+
+  function qSel(k, v, sec, qid, qt) {
+    qR[k] = { section: sec, question_id: qid, question_text: qt, answer_value: v };
+    document.getElementById('sc_' + k).querySelectorAll('.qso').forEach((e, i) => e.classList.toggle('sel', i === v));
+  }
+
+  function qNext() {
+    const s  = Q[qI];
+    const un = s.q.filter(q => !qR[s.id + '__' + q.id]);
+    if (un.length > 0) { toast('Please answer all questions before proceeding.', 'error'); return; }
+    if (qI < Q.length - 1) {
+      document.getElementById('qs' + qI).classList.remove('active');
+      qI++;
+      document.getElementById('qs' + qI).classList.add('active');
+      qPU();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      submitQ();
+    }
+  }
+
+  function qPrev() {
+    if (qI > 0) {
+      document.getElementById('qs' + qI).classList.remove('active');
+      qI--;
+      document.getElementById('qs' + qI).classList.add('active');
+      qPU();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  function cancelQ() {
+    if (Object.keys(qR).length > 0 && !confirm('Exit assessment? Your progress will be lost.')) {
+      return;
+    }
+    showDash();
+  }
+
+  function qPU() {
+    const p = (qI + 1) / Q.length * 100;
+    document.getElementById('qpB').style.width      = p + '%';
+    document.getElementById('qpT').textContent      = `Section ${qI + 1} of ${Q.length} — ${Q[qI].title}`;
+    document.getElementById('qPB').style.visibility = qI === 0 ? 'hidden' : 'visible';
+    document.getElementById('qNB').textContent      = qI === Q.length - 1 ? '🤖 Submit & Analyze' : 'Next Section →';
+  }
+
+  async function submitQ() {
+    try {
+      await api('/api/questionnaire/submit', 'POST', { responses: Object.values(qR) });
+      U.questionnaire_complete = 1;
+      toast('Submitted! Running AI...');
+      await runML();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  // ─────────────────────────────────────────────
+  // ML / AI processing
+  // ─────────────────────────────────────────────
+  async function runML() {
+    const o = document.getElementById('po');
+    const b = document.getElementById('poB');
+    const s = document.getElementById('poS');
+    o.classList.add('active');
+
+    const steps = [
+      { p:  8, t: 'Loading questionnaire responses...' },
+      { p: 20, t: 'Extracting features from 11 domains...' },
+      { p: 35, t: 'Normalizing 15 input features...' },
+      { p: 50, t: 'Forward propagation: Layer 1 (15→20, ReLU)...' },
+      { p: 62, t: 'Forward propagation: Layer 2 (20→12, ReLU)...' },
+      { p: 72, t: 'Forward propagation: Layer 3 (12→8, ReLU)...' },
+      { p: 82, t: 'Sigmoid output: Autism spectrum score...' },
+      { p: 90, t: 'Generating recommendations...' },
+      { p: 96, t: 'Compiling report...' },
+      { p: 100, t: 'Complete!' },
+    ];
+
+    for (const st of steps) {
+      b.style.width  = st.p + '%';
+      s.textContent  = st.t;
+      await new Promise(r => setTimeout(r, 350 + Math.random() * 300));
+    }
+
+    try {
+      const d = await api('/api/ml/process', 'POST');
+      ML = d.results;
+      toast('🧠 AI Analysis complete!');
+      showDash();
+      await loadUser();
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
+    o.classList.remove('active');
+  }
+
+  // ─────────────────────────────────────────────
+  // Dashboard
+  // ─────────────────────────────────────────────
+  async function showDash()  { sp('pg-dash'); await loadUser(); }
+
+  async function loadUser() {
+    try {
+      const d = await api('/api/auth/me');
+      U = d.user;
+      updateSB();
+      if (d.user.ml_results) {
+        ML = d.user.ml_results;
+        if (ML.recommendations && typeof ML.recommendations === 'string')
+          ML.recommendations = JSON.parse(ML.recommendations);
+        if (ML.detailed_report && typeof ML.detailed_report === 'string')
+          ML.detailed_report = JSON.parse(ML.detailed_report);
+      }
+      renderOV();
+    } catch (e) { console.error(e); }
+  }
+
+  function updateSB() {
+    if (!U) return;
+    document.getElementById('dAv').textContent  = (U.first_name[0] + U.last_name[0]).toUpperCase();
+    document.getElementById('dNm').textContent  = U.first_name + ' ' + U.last_name;
+    document.getElementById('dEm').textContent  = U.email;
+    document.getElementById('dGr').textContent  = 'Welcome, ' + U.first_name;
+  }
+
+  function sd(s) {
+    document.querySelectorAll('.ds').forEach(e  => e.classList.remove('active'));
+    document.querySelectorAll('.sbi').forEach(e => e.classList.remove('active'));
+    document.getElementById('d-' + s).classList.add('active');
+    const si = document.querySelector(`.sbi[data-d="${s}"]`);
+    if (si) si.classList.add('active');
+    if (s === 'res') renderRes();
+    if (s === 'sen') renderSen();
+    if (s === 'rec') renderRec();
+    if (s === 'rep') renderRep();
+  }
+
+  // Risk category helpers
+  function rk(c)  { return c === 'Low' ? 'rk-l' : c === 'Low-Moderate' ? 'rk-lm' : c === 'Moderate' ? 'rk-m' : c === 'Moderate-High' ? 'rk-mh' : 'rk-h'; }
+  function rkm(c) { return c === 'Low' || c === 'Low-Moderate' ? 'g' : c === 'Moderate' ? 'a' : 'r'; }
+
+  // ─────────────────────────────────────────────
+  // Score bars
+  // ─────────────────────────────────────────────
+  function bars(id, data) {
+    const colors = ['#38d9f5', '#f5a623', '#f55050', '#a78bfa', '#2dd4bf', '#3dd68c', '#fb7185'];
+    let h = '', i = 0;
+    for (const [l, v] of Object.entries(data)) {
+      const val = v != null ? parseFloat(v) : 0;
+      const p   = Math.min(100, (val / 10) * 100);
+      const c   = colors[i % colors.length];
+      h += `<div class="sbr">
+        <div class="sbl2">${l}</div>
+        <div class="sbt"><div class="sbf2" style="width:${p}%;background:${c}"></div></div>
+        <div class="sbv" style="color:${c}">${val.toFixed(1)}</div>
+      </div>`;
+      i++;
+    }
+    document.getElementById(id).innerHTML = h;
+  }
+
+  // ─────────────────────────────────────────────
+  // Overview
+  // ─────────────────────────────────────────────
+  function renderOV() {
+    const na = document.getElementById('ovNA');
+    const fi = document.getElementById('ovF');
+
+    if (!ML || !U.questionnaire_complete) {
+      na.style.display = 'block';
+      fi.style.display = 'none';
+      document.getElementById('bML').style.display  = 'none';
+      document.getElementById('dSub').textContent   = 'Complete assessment to see results';
+      return;
+    }
+
+    na.style.display = 'none';
+    fi.style.display = 'block';
+    document.getElementById('bML').style.display  = 'inline-flex';
+    document.getElementById('dSub').textContent   = 'AI-powered sensory health analysis';
+
+    const m = rkm(ML.risk_category);
+    document.getElementById('ovM').innerHTML = `
+      <div class="mc ${m} ai">
+        <div class="mci">🎯</div>
+        <div class="mcv">${ML.autism_score}</div>
+        <div class="mcl">Autism Score /100</div>
+      </div>
+      <div class="mc c ai">
+        <div class="mci">🧠</div>
+        <div class="mcv" style="font-size:18px">${(ML.pattern_type || 'N/A').split('(')[0].trim()}</div>
+        <div class="mcl">Sensory Pattern</div>
+      </div>
+      <div class="mc v ai">
+        <div class="mci">📊</div>
+        <div class="mcv">${ML.confidence ? parseFloat(ML.confidence).toFixed(0) + '%' : 'N/A'}</div>
+        <div class="mcl">Confidence</div>
+      </div>
+      <div class="mc a ai">
+        <div class="mci">⚡</div>
+        <div class="mcv" style="font-size:18px">${ML.risk_category || 'N/A'}</div>
+        <div class="mcl">Risk Category</div>
+      </div>`;
+
+    bars('ovSB', {
+      Visual:          ML.sensory_visual,
+      Auditory:        ML.sensory_auditory,
+      Tactile:         ML.sensory_tactile,
+      Olfactory:       ML.sensory_olfactory,
+      Vestibular:      ML.sensory_vestibular,
+      Proprioceptive:  ML.sensory_proprioceptive,
+      Interoceptive:   ML.sensory_interoceptive,
+    });
+    bars('ovDB', {
+      'Social Comm.':    ML.social_communication,
+      'Repetitive Beh.': ML.repetitive_behaviors,
+      'Emotional Reg.':  ML.emotional_regulation,
+      'Executive Func.': ML.executive_function,
+    });
+
+    const recs = (ML.recommendations || []).filter(r => r.priority === 'high').slice(0, 3);
+    document.getElementById('ovRC').innerHTML = recs.length > 0
+      ? recs.map(r => `
+          <div class="ri hi">
+            <div>
+              <span class="rcc">${r.category}</span>
+              <div class="rct">${r.title}</div>
+              <div class="rcx">${r.description || r.text || ''}</div>
+            </div>
+          </div>`).join('')
+      : '<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">No high-priority recommendations.</div>';
+  }
+
+  // ─────────────────────────────────────────────
+  // AI Results
+  // ─────────────────────────────────────────────
+  function renderRes() {
+    const e = document.getElementById('resC');
+    if (!ML) {
+      e.innerHTML = `<div class="na">
+        <div class="nai">🤖</div>
+        <div class="nat">No Results Yet</div>
+        <div class="nad">Complete the assessment first.</div>
+        <button class="btn btn-p" onclick="startQ()">Start Assessment</button>
+      </div>`;
+      return;
+    }
+    e.innerHTML = `
+      <div class="disc">⚠️ This is an AI-generated screening result. It is NOT a clinical diagnosis. Consult a healthcare professional.</div>
+      <div class="rh">
+        <div class="rs" style="color:${ML.autism_score >= 55 ? 'var(--red)' : ML.autism_score >= 35 ? 'var(--amber)' : 'var(--green)'}">${ML.autism_score}</div>
+        <div class="rl">Autism Spectrum Score (0-100)</div>
+        <div class="rlv ${rk(ML.risk_category)}">${ML.autism_level}</div>
+      </div>
+      <div class="mr">
+        <div class="mc c"><div class="mci">🔬</div><div class="mcv" style="font-size:16px">${ML.pattern_type || 'N/A'}</div><div class="mcl">Sensory Pattern</div></div>
+        <div class="mc v"><div class="mci">📊</div><div class="mcv">${ML.confidence ? parseFloat(ML.confidence).toFixed(1) + '%' : 'N/A'}</div><div class="mcl">Model Confidence</div></div>
+        <div class="mc a"><div class="mci">⚡</div><div class="mcv">${ML.risk_category}</div><div class="mcl">Risk Category</div></div>
+        <div class="mc g"><div class="mci">🧬</div><div class="mcv">4-Layer NN</div><div class="mcl">15→20→12→8→1</div></div>
+      </div>`;
+  }
+
+  // ─────────────────────────────────────────────
+  // Sensory profile
+  // ─────────────────────────────────────────────
+  function renderSen() {
+    const e = document.getElementById('senC');
+    if (!ML) {
+      e.innerHTML = `<div class="na">
+        <div class="nai">📊</div>
+        <div class="nat">No Sensory Data</div>
+        <div class="nad">Complete assessment first.</div>
+        <button class="btn btn-p" onclick="startQ()">Start Assessment</button>
+      </div>`;
+      return;
+    }
+
+    const channels = {
+      Visual:         ML.sensory_visual,
+      Auditory:       ML.sensory_auditory,
+      Tactile:        ML.sensory_tactile,
+      Olfactory:      ML.sensory_olfactory,
+      Vestibular:     ML.sensory_vestibular,
+      Proprioceptive: ML.sensory_proprioceptive,
+      Interoceptive:  ML.sensory_interoceptive,
+    };
+
+    let h = `<div class="card" style="margin-bottom:20px">
+      <div class="ch"><div><div class="ct">Sensory Channel Scores</div><div class="cs">0 = No sensitivity, 10 = Extreme sensitivity</div></div></div>
+      <div id="senBars"></div>
+    </div>
+    <div class="g2">`;
+
+    if (ML.detailed_report && ML.detailed_report.sensory_profile) {
+      ML.detailed_report.sensory_profile.forEach(s => {
+        h += `<div class="card">
+          <div class="ch">
+            <div><div class="ct">${s.channel}</div><div class="cs">Score: ${s.score}/10 — ${s.severity}</div></div>
+            <div style="font-size:24px;font-weight:700;color:${s.score >= 7 ? 'var(--red)' : s.score >= 5 ? 'var(--amber)' : 'var(--green)'}">${s.score}</div>
+          </div>
+          <p style="font-size:13px;color:var(--t2);line-height:1.5">${s.description}</p>
+        </div>`;
+      });
+    }
+
+    h += '</div>';
+    e.innerHTML = h;
+    bars('senBars', channels);
+  }
+
+  // ─────────────────────────────────────────────
+  // Recommendations
+  // ─────────────────────────────────────────────
+  let rpFilter = 'all';
+
+  function renderRec() {
+    const e = document.getElementById('recC');
+    if (!ML || !ML.recommendations) {
+      e.innerHTML = `<div class="na">
+        <div class="nai">💡</div>
+        <div class="nat">No Recommendations</div>
+        <div class="nad">Complete assessment first.</div>
+        <button class="btn btn-p" onclick="startQ()">Start Assessment</button>
+      </div>`;
+      return;
+    }
+
+    const recs = ML.recommendations;
+    const catIcons = { 'Environment':'\u{1F3E0}', 'Therapy':'\u{1F9D1}\u200D\u2695\uFE0F', 'Daily Living':'\u{1F3E1}', 'Sensory Diet':'\u{1F372}', 'Lifestyle':'\u{1F3C3}', 'Monitoring':'\u{1F4CA}', 'Medical':'\u2695\uFE0F' };
+    const catBgs = { 'Environment':'var(--cyang)', 'Therapy':'var(--violetg)', 'Daily Living':'var(--tealg)', 'Sensory Diet':'var(--amberg)', 'Lifestyle':'var(--greeng)', 'Monitoring':'var(--cyang)', 'Medical':'var(--redg)' };
+
+    const hi = recs.filter(r => r.priority === 'high').length;
+    const me = recs.filter(r => r.priority === 'medium').length;
+    const lo = recs.filter(r => r.priority === 'low').length;
+
+    // Count by timeframe
+    const imm = recs.filter(r => r.timeframe === 'immediate').length;
+    const st  = recs.filter(r => r.timeframe === 'short-term').length;
+    const og  = recs.filter(r => r.timeframe === 'ongoing').length;
+
+    let h = '<div class="disc">These are AI-generated suggestions. Always consult with qualified professionals before making changes to care plans.</div>';
+
+    // Overview cards
+    h += `<div class="rp-overview">
+      <div class="rp-ov-card hi"><div class="rp-ov-num" style="color:var(--red)">${hi}</div><div class="rp-ov-lbl">High Priority</div></div>
+      <div class="rp-ov-card me"><div class="rp-ov-num" style="color:var(--amber)">${me}</div><div class="rp-ov-lbl">Medium Priority</div></div>
+      <div class="rp-ov-card lo"><div class="rp-ov-num" style="color:var(--green)">${lo}</div><div class="rp-ov-lbl">Low Priority</div></div>
+    </div>`;
+
+    // Tab bar
+    h += `<div class="rp-tabs">
+      <div class="rp-tab ${rpFilter==='all'?'active':''}" onclick="rpFilter='all';renderRec()">All<span class="rp-tab-count">${recs.length}</span></div>
+      <div class="rp-tab ${rpFilter==='immediate'?'active':''}" onclick="rpFilter='immediate';renderRec()">Immediate<span class="rp-tab-count">${imm}</span></div>
+      <div class="rp-tab ${rpFilter==='short-term'?'active':''}" onclick="rpFilter='short-term';renderRec()">Short-Term<span class="rp-tab-count">${st}</span></div>
+      <div class="rp-tab ${rpFilter==='ongoing'?'active':''}" onclick="rpFilter='ongoing';renderRec()">Ongoing<span class="rp-tab-count">${og}</span></div>
+    </div>`;
+
+    // Filter recs
+    const filtered = rpFilter === 'all' ? recs : recs.filter(r => r.timeframe === rpFilter);
+    // Sort: high first, then medium, then low
+    const priOrder = { high: 0, medium: 1, low: 2 };
+    const sorted = [...filtered].sort((a, b) => (priOrder[a.priority] || 9) - (priOrder[b.priority] || 9));
+
+    h += '<div class="rp-list">';
+
+    if (sorted.length === 0) {
+      h += '<div style="text-align:center;padding:40px;color:var(--t3);font-size:13px">No recommendations in this timeframe.</div>';
+    }
+
+    sorted.forEach((r, idx) => {
+      const p = r.priority === 'high' ? 'hi' : r.priority === 'medium' ? 'me' : 'lo';
+      const icon = catIcons[r.category] || '\u{1F4CC}';
+      const bg = catBgs[r.category] || 'var(--cyang)';
+      const tfLabels = { immediate: 'Immediate', 'short-term': 'Short-Term', ongoing: 'Ongoing' };
+      const desc = r.description || r.text || '';
+      const steps = r.steps || [];
+      const trigger = r.trigger || null;
+
+      // Score color
+      let scoreColor = 'var(--t1)';
+      if (trigger && trigger.score != null) {
+        scoreColor = trigger.score >= 7 ? 'var(--red)' : trigger.score >= 5 ? 'var(--amber)' : 'var(--green)';
+      }
+
+      h += `<div class="rp-item" id="rpi${idx}">
+        <div class="rp-item-bar ${p}"></div>
+        <div class="rp-item-hdr" onclick="document.getElementById('rpi${idx}').classList.toggle('open')">
+          <div class="rp-item-icon" style="background:${bg}">${icon}</div>
+          <div class="rp-item-info">
+            <div class="rp-item-title">${r.title}</div>
+            <div class="rp-item-desc">${desc}</div>
+            <div class="rp-item-badges">
+              <span class="rp-badge ${p}">${r.priority}</span>
+              <span class="rp-badge cat">${r.category}</span>
+              ${r.timeframe ? `<span class="rp-badge tf">${tfLabels[r.timeframe] || r.timeframe}</span>` : ''}
+            </div>
+          </div>`;
+
+      if (trigger && trigger.score != null) {
+        h += `<div class="rp-trigger">
+          <div>
+            <div class="rp-trigger-score" style="color:${scoreColor}">${trigger.score}</div>
+            <div class="rp-trigger-label">${trigger.label}</div>
+          </div>
+        </div>`;
+      }
+
+      h += `<div class="rp-item-arrow">\u25BC</div>
+        </div>
+        <div class="rp-item-body">`;
+
+      if (steps.length > 0) {
+        h += '<ol class="rp-steps">';
+        steps.forEach((s, si) => {
+          h += `<li class="rp-step">
+            <div class="rp-step-num">${si + 1}</div>
+            <div class="rp-step-text">${s}</div>
+          </li>`;
+        });
+        h += '</ol>';
+      }
+
+      h += '</div></div>';
+    });
+
+    h += '</div>';
+    e.innerHTML = h;
+  }
+
+  // ─────────────────────────────────────────────
+  // Full report
+  // ─────────────────────────────────────────────
+  function renderRep() {
+    const e = document.getElementById('repC');
+    if (!ML || !ML.detailed_report) {
+      e.innerHTML = `<div class="na">
+        <div class="nai">📄</div>
+        <div class="nat">No Report</div>
+        <div class="nad">Complete assessment first.</div>
+        <button class="btn btn-p" onclick="startQ()">Start Assessment</button>
+      </div>`;
+      return;
+    }
+
+    const r = ML.detailed_report;
+    const scoreColor = ML.autism_score >= 55 ? 'var(--red)' : ML.autism_score >= 35 ? 'var(--amber)' : 'var(--green)';
+    const circumference = 2 * Math.PI * 68;
+    const scoreOffset = circumference - (ML.autism_score / 100) * circumference;
+
+    let h = `
+      <div class="disc">⚠️ Research-grade screening report. Not a clinical diagnosis.</div>
+
+      <div class="rep-hero">
+        <div class="rep-score-ring">
+          <svg viewBox="0 0 160 160">
+            <circle class="ring-bg" cx="80" cy="80" r="68"/>
+            <circle class="ring-fg" cx="80" cy="80" r="68"
+              stroke="${scoreColor}"
+              stroke-dasharray="${circumference}"
+              stroke-dashoffset="${scoreOffset}"/>
+          </svg>
+          <div class="rep-score-num">
+            <div class="rep-score-val" style="color:${scoreColor}">${ML.autism_score}</div>
+            <div class="rep-score-lbl">out of 100</div>
+          </div>
+        </div>
+        <div class="rep-level-badge ${rk(ML.risk_category)}">${ML.autism_level}</div>
+        <div class="rep-meta-strip" style="justify-content:center;margin-top:16px">
+          <div class="rep-meta-item"><strong>Risk:</strong> ${ML.risk_category}</div>
+          <div class="rep-meta-item"><strong>Pattern:</strong> ${ML.pattern_type}</div>
+          <div class="rep-meta-item"><strong>Confidence:</strong> ${ML.confidence ? parseFloat(ML.confidence).toFixed(1) + '%' : 'N/A'}</div>
+          <div class="rep-meta-item"><strong>Model:</strong> ${r.model_info?.mode === 'dual-model' ? 'RF + MLP (Dual)' : r.model_info?.mode === 'nn-only' ? 'MLP Neural Net' : r.model_info?.mode === 'rf-only' ? 'Random Forest' : 'Direct Scoring'}</div>
+        </div>
+      </div>
+
+      <div class="rep-toc">
+        <span style="font-size:12px;color:var(--t3);padding:7px 8px">Jump to:</span>
+        <a class="rep-toc-item" href="#rep-summary" onclick="event.preventDefault();document.getElementById('rep-summary').scrollIntoView({behavior:'smooth'})">Summary</a>
+        <a class="rep-toc-item" href="#rep-sensory" onclick="event.preventDefault();document.getElementById('rep-sensory').scrollIntoView({behavior:'smooth'})">Sensory Profile</a>
+        <a class="rep-toc-item" href="#rep-domains" onclick="event.preventDefault();document.getElementById('rep-domains').scrollIntoView({behavior:'smooth'})">Domains</a>
+        <a class="rep-toc-item" href="#rep-network" onclick="event.preventDefault();document.getElementById('rep-network').scrollIntoView({behavior:'smooth'})">Neural Network</a>
+        <a class="rep-toc-item" href="#rep-models" onclick="event.preventDefault();document.getElementById('rep-models').scrollIntoView({behavior:'smooth'})">AI Models</a>
+      </div>`;
+
+    // Summary section
+    h += `<div class="rep-section open" id="rep-summary">
+      <div class="rep-sec-hdr" onclick="this.parentElement.classList.toggle('open');this.parentElement.querySelector('.rep-sec-body').style.display=this.parentElement.classList.contains('open')?'block':'none'">
+        <div class="rep-sec-icon" style="background:var(--cyang);color:var(--cyan)">📋</div>
+        <div class="rep-sec-title">Executive Summary</div>
+        <div class="rep-sec-arrow">▼</div>
+      </div>
+      <div class="rep-sec-body">
+        <div class="rep-summary-quote">${r.summary}</div>
+        <div class="mr" style="margin-top:16px">
+          <div class="mc c"><div class="mci">🎯</div><div class="mcv">${ML.autism_score}</div><div class="mcl">Spectrum Score</div></div>
+          <div class="mc v"><div class="mci">📊</div><div class="mcv">${ML.confidence ? parseFloat(ML.confidence).toFixed(0) + '%' : 'N/A'}</div><div class="mcl">Confidence</div></div>
+          <div class="mc a"><div class="mci">⚡</div><div class="mcv" style="font-size:18px">${ML.risk_category}</div><div class="mcl">Risk Level</div></div>
+          <div class="mc g"><div class="mci">🔬</div><div class="mcv" style="font-size:16px">${(ML.pattern_type || 'N/A').split('(')[0].trim()}</div><div class="mcl">Pattern</div></div>
+        </div>
+      </div>
+    </div>`;
+
+    // Sensory Profile section
+    if (r.sensory_profile) {
+      const chCirc = 2 * Math.PI * 22;
+      h += `<div class="rep-section open" id="rep-sensory">
+        <div class="rep-sec-hdr" onclick="this.parentElement.classList.toggle('open');this.parentElement.querySelector('.rep-sec-body').style.display=this.parentElement.classList.contains('open')?'block':'none'">
+          <div class="rep-sec-icon" style="background:var(--violetg);color:var(--violet)">🧠</div>
+          <div class="rep-sec-title">Sensory Profile</div>
+          <div class="rep-sec-arrow">▼</div>
+        </div>
+        <div class="rep-sec-body"><div class="rep-ch-grid">`;
+
+      const chColors = ['#38d9f5','#f5a623','#f55050','#a78bfa','#2dd4bf','#3dd68c','#fb7185'];
+      r.sensory_profile.forEach((s, i) => {
+        const pct = s.score / 10;
+        const offset = chCirc - pct * chCirc;
+        const color = chColors[i % chColors.length];
+        const sevColor = s.severity === 'Significant' ? 'var(--red)' : s.severity === 'Moderate' ? 'var(--amber)' : s.severity === 'Mild' ? 'var(--teal)' : 'var(--green)';
+        const sevBg = s.severity === 'Significant' ? 'var(--redg)' : s.severity === 'Moderate' ? 'var(--amberg)' : s.severity === 'Mild' ? 'var(--tealg)' : 'var(--greeng)';
+
+        h += `<div class="rep-ch-card">
+          <div class="rep-ch-circle">
+            <svg viewBox="0 0 56 56">
+              <circle class="ch-bg" cx="28" cy="28" r="22"/>
+              <circle class="ch-fg" cx="28" cy="28" r="22" stroke="${color}"
+                stroke-dasharray="${chCirc}" stroke-dashoffset="${offset}"/>
+            </svg>
+            <div class="rep-ch-val" style="color:${color}">${s.score}</div>
+          </div>
+          <div class="rep-ch-info">
+            <div class="rep-ch-name">${s.channel}</div>
+            <span class="rep-ch-sev" style="background:${sevBg};color:${sevColor}">${s.severity}</span>
+            <div class="rep-ch-desc">${s.description}</div>
+          </div>
+        </div>`;
+      });
+
+      h += '</div></div></div>';
+    }
+
+    // Domain Analysis section
+    if (r.domain_analysis) {
+      const domColors = ['#38d9f5','#a78bfa','#f5a623','#3dd68c'];
+      h += `<div class="rep-section open" id="rep-domains">
+        <div class="rep-sec-hdr" onclick="this.parentElement.classList.toggle('open');this.parentElement.querySelector('.rep-sec-body').style.display=this.parentElement.classList.contains('open')?'block':'none'">
+          <div class="rep-sec-icon" style="background:var(--amberg);color:var(--amber)">📊</div>
+          <div class="rep-sec-title">Domain Analysis</div>
+          <div class="rep-sec-arrow">▼</div>
+        </div>
+        <div class="rep-sec-body"><div class="rep-dom-bars">`;
+
+      r.domain_analysis.forEach((d, i) => {
+        const pct = Math.min(100, (d.score / 10) * 100);
+        const color = domColors[i % domColors.length];
+        const sevColor = d.severity === 'Significant' ? 'var(--red)' : d.severity === 'Moderate' ? 'var(--amber)' : d.severity === 'Mild' ? 'var(--teal)' : 'var(--green)';
+        const sevBg = d.severity === 'Significant' ? 'var(--redg)' : d.severity === 'Moderate' ? 'var(--amberg)' : d.severity === 'Mild' ? 'var(--tealg)' : 'var(--greeng)';
+
+        h += `<div class="rep-dom-item">
+          <div class="rep-dom-label">${d.domain}</div>
+          <div class="rep-dom-track">
+            <div class="rep-dom-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${color}88)"></div>
+          </div>
+          <div class="rep-dom-score" style="color:${color}">${d.score}</div>
+          <span class="rep-dom-sev" style="background:${sevBg};color:${sevColor}">${d.severity}</span>
+        </div>`;
+      });
+
+      h += '</div></div></div>';
+    }
+
+    // Neural Network section
+    if (r.network_activations) {
+      const a = r.network_activations;
+      const arch = a.architecture || [14, 20, 12, 8, 1];
+      const layerNames = ['Input', ...arch.slice(1, -1).map((_, i) => 'Hidden ' + (i + 1)), 'Output'];
+      const layerActs = ['features', ...Array(arch.length - 2).fill('ReLU'), 'Sigmoid'];
+
+      h += `<div class="rep-section open" id="rep-network">
+        <div class="rep-sec-hdr" onclick="this.parentElement.classList.toggle('open');this.parentElement.querySelector('.rep-sec-body').style.display=this.parentElement.classList.contains('open')?'block':'none'">
+          <div class="rep-sec-icon" style="background:var(--greeng);color:var(--green)">🤖</div>
+          <div class="rep-sec-title">Neural Network Architecture</div>
+          <div class="rep-sec-arrow">▼</div>
+        </div>
+        <div class="rep-sec-body">
+          <div class="rep-nn">`;
+
+      arch.forEach((size, i) => {
+        const isOutput = i === arch.length - 1;
+        const act = a.layer_activations?.[i - 1];
+        h += `${i > 0 ? '<div class="rep-nn-conn"></div>' : ''}
+            <div class="rep-nn-layer">
+              <div class="rep-nn-box"${isOutput ? ' style="border-color:var(--cyan)"' : ''}>
+                <div class="rep-nn-box-lbl">${layerNames[i]}</div>
+                <div class="rep-nn-box-val">${isOutput ? (a.output_raw?.toFixed(3) || size) : size}</div>
+                <div class="rep-nn-box-sz">${layerActs[i]}</div>
+              </div>
+              ${i > 0 && act !== undefined ? `<div style="font-size:10px;color:var(--t3);margin-top:4px">avg: ${act.toFixed(3)}</div>` : ''}
+            </div>`;
+      });
+
+      h += `</div>
+          <div class="rep-meta-strip" style="justify-content:center">
+            <div class="rep-meta-item"><strong>Architecture:</strong> Multi-Layer Perceptron</div>
+            <div class="rep-meta-item"><strong>Layers:</strong> ${arch.join(' → ')}</div>
+            <div class="rep-meta-item"><strong>Activations:</strong> ReLU + Sigmoid</div>
+            <div class="rep-meta-item"><strong>Training:</strong> ${r.model_info?.nn ? 'Kaggle AQ-10 Dataset' : 'Fallback Mode'}</div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    // AI Models section
+    if (r.model_info) {
+      const mi = r.model_info;
+      h += `<div class="rep-section open" id="rep-models">
+        <div class="rep-sec-hdr" onclick="this.parentElement.classList.toggle('open');this.parentElement.querySelector('.rep-sec-body').style.display=this.parentElement.classList.contains('open')?'block':'none'">
+          <div class="rep-sec-icon" style="background:var(--cyang);color:var(--cyan)">⚙️</div>
+          <div class="rep-sec-title">AI Model Details</div>
+          <div class="rep-sec-arrow">▼</div>
+        </div>
+        <div class="rep-sec-body">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">`;
+
+      // RF Model card
+      if (mi.rf) {
+        h += `<div style="background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <div style="width:36px;height:36px;border-radius:8px;background:var(--greeng);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:18px">🌲</div>
+            <div>
+              <div style="font-weight:700;color:var(--t1)">Random Forest</div>
+              <div style="font-size:12px;color:var(--t3)">Model 1 — ASD Classifier</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+            <div style="color:var(--t3)">Trees:</div><div style="color:var(--t1);font-weight:600">${mi.rf.n_estimators}</div>
+            <div style="color:var(--t3)">Accuracy:</div><div style="color:var(--green);font-weight:600">${(mi.rf.accuracy * 100).toFixed(1)}%</div>
+            <div style="color:var(--t3)">Prediction:</div><div style="color:${mi.rf.prediction === 'YES' ? 'var(--red)' : 'var(--green)'};font-weight:600">${mi.rf.prediction}</div>
+            <div style="color:var(--t3)">Probability:</div><div style="color:var(--t1);font-weight:600">${(mi.rf.probability * 100).toFixed(1)}%</div>
+          </div>
+          <div style="margin-top:12px;font-size:11px;color:var(--t3)">Dataset: ${mi.rf.dataset}</div>
+        </div>`;
+      }
+
+      // NN Model card
+      if (mi.nn) {
+        h += `<div style="background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <div style="width:36px;height:36px;border-radius:8px;background:var(--violetg);color:var(--violet);display:flex;align-items:center;justify-content:center;font-size:18px">🧠</div>
+            <div>
+              <div style="font-weight:700;color:var(--t1)">Neural Network MLP</div>
+              <div style="font-size:12px;color:var(--t3)">Model 2 — Severity Scorer</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+            <div style="color:var(--t3)">Architecture:</div><div style="color:var(--t1);font-weight:600">${mi.nn.architecture.join('→')}</div>
+            <div style="color:var(--t3)">Accuracy:</div><div style="color:var(--green);font-weight:600">${(mi.nn.accuracy * 100).toFixed(1)}%</div>
+            <div style="color:var(--t3)">Raw Score:</div><div style="color:var(--cyan);font-weight:600">${mi.nn.raw_score}</div>
+            <div style="color:var(--t3)">Activations:</div><div style="color:var(--t1);font-weight:600">ReLU + Sigmoid</div>
+          </div>
+          <div style="margin-top:12px;font-size:11px;color:var(--t3)">Dataset: ${mi.nn.dataset}</div>
+        </div>`;
+      }
+
+      // Fallback card when no trained models
+      if (!mi.rf && !mi.nn) {
+        h += `<div style="background:var(--bg2);border:1px solid var(--amberg);border-radius:12px;padding:20px;grid-column:1/-1">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <div style="width:36px;height:36px;border-radius:8px;background:var(--amberg);color:var(--amber);display:flex;align-items:center;justify-content:center;font-size:18px">⚠️</div>
+            <div>
+              <div style="font-weight:700;color:var(--amber)">Fallback Mode — Direct Scoring</div>
+              <div style="font-size:12px;color:var(--t3)">No trained models loaded. Using weighted questionnaire averages.</div>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--t3);line-height:1.5">
+            To enable AI models: download the Kaggle dataset, run the Python training scripts, then restart the server.<br>
+            See <code>ml/train_rf_classifier.py</code> and <code>ml/train_nn_regressor.py</code> for instructions.
+          </div>
+        </div>`;
+      }
+
+      h += `</div>
+          <div class="rep-meta-strip" style="justify-content:center;margin-top:16px">
+            <div class="rep-meta-item"><strong>Mode:</strong> ${mi.mode === 'dual-model' ? 'Dual Model (RF + NN)' : mi.mode === 'fallback' ? 'Fallback (Direct)' : mi.mode}</div>
+            <div class="rep-meta-item"><strong>Features:</strong> ${mi.feature_mapping}</div>
+            <div class="rep-meta-item"><strong>Dataset:</strong> ${mi.dataset}</div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    h += `<div class="rep-print-bar">
+      <button class="btn" onclick="window.print()">🖨️ Print Report</button>
+    </div>`;
+
+    e.innerHTML = h;
+  }
+
+  // ─────────────────────────────────────────────
+  // Init
+  // ─────────────────────────────────────────────
+  async function init() {
+    try {
+      const d = await api('/api/auth/me');
+      U = d.user;
+      route();
+    } catch (e) { sp('pg-login'); }
+  }
+  init();
+</script>
+</body>
+</html>
