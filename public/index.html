@@ -421,7 +421,7 @@
     .sblo:hover { color: var(--red); background: var(--redg); }
 
     /* ── Main content ── */
-    .mn { padding: 28px 32px; max-width: 1200px; }
+    .mn { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
     .ds        { display: none; }
     .ds.active { display: block; animation: fu .3s ease; }
 
@@ -839,6 +839,12 @@
       .mn       { padding: 20px 16px; }
       .auth-card { padding: 24px; }
       .ob-card  { padding: 24px; }
+    }
+    @media (min-width: 1600px) {
+      .mn       { max-width: 1600px; padding: 32px 48px; }
+      .mr       { grid-template-columns: repeat(4, 1fr); gap: 18px; }
+      .g2       { grid-template-columns: 1fr 1fr; gap: 20px; }
+      .rep-ch-grid { grid-template-columns: repeat(3, 1fr); }
     }
   </style>
 </head>
