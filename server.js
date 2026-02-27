@@ -1,13 +1,13 @@
 // ============================================================
 // NEUROSENSE — Full-Stack Server
-// Express + sql.js (SQLite) + Session Auth + ML Engine
+// Express + Turso/libSQL (Cloud SQLite) + Session Auth + ML Engine
 // ============================================================
 
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
-const initSqlJs = require('sql.js');
+const { createClient } = require('@libsql/client');
 const path = require('path');
 const fs = require('fs');
 
@@ -29,17 +29,21 @@ let db;
 
 // ===== DATABASE INITIALIZATION =====
 async function initDB() {
-  const SQL = await initSqlJs();
-  const dbPath = path.join(__dirname, 'neurosense.db');
-
-  if (fs.existsSync(dbPath)) {
-    const buffer = fs.readFileSync(dbPath);
-    db = new SQL.Database(buffer);
+  // Use Turso cloud DB if URL is set, otherwise local SQLite file
+  if (process.env.TURSO_DATABASE_URL) {
+    db = createClient({
+      url: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
+    console.log('☁️  Connected to Turso cloud database');
   } else {
-    db = new SQL.Database();
+    db = createClient({
+      url: 'file:' + path.join(__dirname, 'neurosense.db'),
+    });
+    console.log('📁 Using local SQLite database');
   }
 
-  db.run(`CREATE TABLE IF NOT EXISTS users (
+  await db.execute(`CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
@@ -53,7 +57,7 @@ async function initDB() {
     questionnaire_complete INTEGER DEFAULT 0
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS health_profiles (
+  await db.execute(`CREATE TABLE IF NOT EXISTS health_profiles (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     height_cm REAL,
@@ -73,7 +77,7 @@ async function initDB() {
     FOREIGN KEY (user_id) REFERENCES users(id)
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS questionnaire_responses (
+  await db.execute(`CREATE TABLE IF NOT EXISTS questionnaire_responses (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     section TEXT NOT NULL,
@@ -85,7 +89,7 @@ async function initDB() {
     FOREIGN KEY (user_id) REFERENCES users(id)
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS ml_results (
+  await db.execute(`CREATE TABLE IF NOT EXISTS ml_results (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     autism_score REAL,
@@ -110,7 +114,7 @@ async function initDB() {
     FOREIGN KEY (user_id) REFERENCES users(id)
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS sensory_entries (
+  await db.execute(`CREATE TABLE IF NOT EXISTS sensory_entries (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     entry_date TEXT,
@@ -130,14 +134,16 @@ async function initDB() {
     FOREIGN KEY (user_id) REFERENCES users(id)
   )`);
 
-  saveDB();
   console.log('✅ Database initialized');
 }
 
-function saveDB() {
-  const data = db.export();
-  const buffer = Buffer.from(data);
-  fs.writeFileSync(path.join(__dirname, 'neurosense.db'), buffer);
+// Helper: convert libsql result rows to array of objects
+function rowsToObjects(result) {
+  return result.rows.map(row => {
+    const obj = {};
+    result.columns.forEach((col, i) => obj[col] = row[i]);
+    return obj;
+  });
 }
 
 // ===== AUTH MIDDLEWARE =====
@@ -149,24 +155,23 @@ function requireAuth(req, res, next) {
 }
 
 // ===== AUTH ROUTES =====
-app.post('/api/auth/signup', (req, res) => {
+app.post('/api/auth/signup', async (req, res) => {
   try {
     const { email, password, first_name, last_name } = req.body;
     if (!email || !password || !first_name || !last_name) {
       return res.status(400).json({ error: 'All fields required' });
     }
 
-    const existing = db.exec("SELECT id FROM users WHERE email = ?", [email]);
-    if (existing.length > 0 && existing[0].values.length > 0) {
+    const existing = await db.execute({ sql: "SELECT id FROM users WHERE email = ?", args: [email] });
+    if (existing.rows.length > 0) {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
     const id = uuidv4();
     const hashedPassword = bcrypt.hashSync(password, 10);
 
-    db.run("INSERT INTO users (id, email, password, first_name, last_name) VALUES (?, ?, ?, ?, ?)",
-      [id, email.toLowerCase(), hashedPassword, first_name, last_name]);
-    saveDB();
+    await db.execute({ sql: "INSERT INTO users (id, email, password, first_name, last_name) VALUES (?, ?, ?, ?, ?)",
+      args: [id, email.toLowerCase(), hashedPassword, first_name, last_name] });
 
     req.session.userId = id;
     res.json({ success: true, user: { id, email, first_name, last_name, onboarding_complete: 0, questionnaire_complete: 0 } });
@@ -176,18 +181,16 @@ app.post('/api/auth/signup', (req, res) => {
   }
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const result = db.exec("SELECT * FROM users WHERE email = ?", [email.toLowerCase()]);
-    if (result.length === 0 || result[0].values.length === 0) {
+    const result = await db.execute({ sql: "SELECT * FROM users WHERE email = ?", args: [email.toLowerCase()] });
+    if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const cols = result[0].columns;
-    const row = result[0].values[0];
     const user = {};
-    cols.forEach((c, i) => user[c] = row[i]);
+    result.columns.forEach((c, i) => user[c] = result.rows[0][i]);
 
     if (!bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -214,77 +217,68 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/auth/me', requireAuth, (req, res) => {
-  const result = db.exec("SELECT id, email, first_name, last_name, date_of_birth, gender, phone, onboarding_complete, questionnaire_complete FROM users WHERE id = ?", [req.session.userId]);
-  if (result.length === 0 || result[0].values.length === 0) {
+app.get('/api/auth/me', requireAuth, async (req, res) => {
+  const result = await db.execute({ sql: "SELECT id, email, first_name, last_name, date_of_birth, gender, phone, onboarding_complete, questionnaire_complete FROM users WHERE id = ?", args: [req.session.userId] });
+  if (result.rows.length === 0) {
     return res.status(404).json({ error: 'User not found' });
   }
-  const cols = result[0].columns;
-  const row = result[0].values[0];
   const user = {};
-  cols.forEach((c, i) => user[c] = row[i]);
+  result.columns.forEach((c, i) => user[c] = result.rows[0][i]);
 
   // Get health profile
-  const hp = db.exec("SELECT * FROM health_profiles WHERE user_id = ?", [req.session.userId]);
-  if (hp.length > 0 && hp[0].values.length > 0) {
-    const hpCols = hp[0].columns;
-    const hpRow = hp[0].values[0];
+  const hp = await db.execute({ sql: "SELECT * FROM health_profiles WHERE user_id = ?", args: [req.session.userId] });
+  if (hp.rows.length > 0) {
     user.health_profile = {};
-    hpCols.forEach((c, i) => user.health_profile[c] = hpRow[i]);
+    hp.columns.forEach((c, i) => user.health_profile[c] = hp.rows[0][i]);
   }
 
   // Get ML results
-  const ml = db.exec("SELECT * FROM ml_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 1", [req.session.userId]);
-  if (ml.length > 0 && ml[0].values.length > 0) {
-    const mlCols = ml[0].columns;
-    const mlRow = ml[0].values[0];
+  const ml = await db.execute({ sql: "SELECT * FROM ml_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 1", args: [req.session.userId] });
+  if (ml.rows.length > 0) {
     user.ml_results = {};
-    mlCols.forEach((c, i) => user.ml_results[c] = mlRow[i]);
+    ml.columns.forEach((c, i) => user.ml_results[c] = ml.rows[0][i]);
   }
 
   res.json({ user });
 });
 
 // ===== ONBOARDING (Personal + Health Profile) =====
-app.post('/api/onboarding/personal', requireAuth, (req, res) => {
+app.post('/api/onboarding/personal', requireAuth, async (req, res) => {
   try {
     const { date_of_birth, gender, phone } = req.body;
-    db.run("UPDATE users SET date_of_birth = ?, gender = ?, phone = ? WHERE id = ?",
-      [date_of_birth, gender, phone, req.session.userId]);
-    saveDB();
+    await db.execute({ sql: "UPDATE users SET date_of_birth = ?, gender = ?, phone = ? WHERE id = ?",
+      args: [date_of_birth, gender, phone, req.session.userId] });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-app.post('/api/onboarding/health', requireAuth, (req, res) => {
+app.post('/api/onboarding/health', requireAuth, async (req, res) => {
   try {
     const { height_cm, weight_kg, blood_group, known_conditions, medications, allergies,
       family_history_autism, family_history_adhd, family_history_sensory,
       sleep_hours, exercise_frequency, diet_type } = req.body;
 
-    // Check if profile exists
-    const existing = db.exec("SELECT id FROM health_profiles WHERE user_id = ?", [req.session.userId]);
-    if (existing.length > 0 && existing[0].values.length > 0) {
-      db.run(`UPDATE health_profiles SET height_cm=?, weight_kg=?, blood_group=?, known_conditions=?,
+    const existing = await db.execute({ sql: "SELECT id FROM health_profiles WHERE user_id = ?", args: [req.session.userId] });
+    if (existing.rows.length > 0) {
+      await db.execute({ sql: `UPDATE health_profiles SET height_cm=?, weight_kg=?, blood_group=?, known_conditions=?,
         medications=?, allergies=?, family_history_autism=?, family_history_adhd=?, family_history_sensory=?,
         sleep_hours=?, exercise_frequency=?, diet_type=?, updated_at=datetime('now') WHERE user_id=?`,
-        [height_cm, weight_kg, blood_group, known_conditions, medications, allergies,
+        args: [height_cm, weight_kg, blood_group, known_conditions, medications, allergies,
           family_history_autism ? 1 : 0, family_history_adhd ? 1 : 0, family_history_sensory ? 1 : 0,
-          sleep_hours, exercise_frequency, diet_type, req.session.userId]);
+          sleep_hours, exercise_frequency, diet_type, req.session.userId] });
     } else {
-      db.run(`INSERT INTO health_profiles (id, user_id, height_cm, weight_kg, blood_group, known_conditions,
+      await db.execute({ sql: `INSERT INTO health_profiles (id, user_id, height_cm, weight_kg, blood_group, known_conditions,
         medications, allergies, family_history_autism, family_history_adhd, family_history_sensory,
         sleep_hours, exercise_frequency, diet_type)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [uuidv4(), req.session.userId, height_cm, weight_kg, blood_group, known_conditions, medications, allergies,
+        args: [uuidv4(), req.session.userId, height_cm, weight_kg, blood_group, known_conditions, medications, allergies,
           family_history_autism ? 1 : 0, family_history_adhd ? 1 : 0, family_history_sensory ? 1 : 0,
-          sleep_hours, exercise_frequency, diet_type]);
+          sleep_hours, exercise_frequency, diet_type] });
     }
 
-    db.run("UPDATE users SET onboarding_complete = 1 WHERE id = ?", [req.session.userId]);
-    saveDB();
+    await db.execute({ sql: "UPDATE users SET onboarding_complete = 1 WHERE id = ?", args: [req.session.userId] });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -293,21 +287,19 @@ app.post('/api/onboarding/health', requireAuth, (req, res) => {
 });
 
 // ===== QUESTIONNAIRE =====
-app.post('/api/questionnaire/submit', requireAuth, (req, res) => {
+app.post('/api/questionnaire/submit', requireAuth, async (req, res) => {
   try {
-    const { responses } = req.body; // Array of { section, question_id, question_text, answer_value, answer_text }
+    const { responses } = req.body;
 
-    // Clear previous responses
-    db.run("DELETE FROM questionnaire_responses WHERE user_id = ?", [req.session.userId]);
+    await db.execute({ sql: "DELETE FROM questionnaire_responses WHERE user_id = ?", args: [req.session.userId] });
 
-    responses.forEach(r => {
-      db.run(`INSERT INTO questionnaire_responses (id, user_id, section, question_id, question_text, answer_value, answer_text)
+    for (const r of responses) {
+      await db.execute({ sql: `INSERT INTO questionnaire_responses (id, user_id, section, question_id, question_text, answer_value, answer_text)
         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [uuidv4(), req.session.userId, r.section, r.question_id, r.question_text, r.answer_value, r.answer_text || '']);
-    });
+        args: [uuidv4(), req.session.userId, r.section, r.question_id, r.question_text, r.answer_value, r.answer_text || ''] });
+    }
 
-    db.run("UPDATE users SET questionnaire_complete = 1 WHERE id = ?", [req.session.userId]);
-    saveDB();
+    await db.execute({ sql: "UPDATE users SET questionnaire_complete = 1 WHERE id = ?", args: [req.session.userId] });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -315,63 +307,48 @@ app.post('/api/questionnaire/submit', requireAuth, (req, res) => {
   }
 });
 
-app.get('/api/questionnaire/responses', requireAuth, (req, res) => {
-  const result = db.exec("SELECT * FROM questionnaire_responses WHERE user_id = ? ORDER BY section, question_id", [req.session.userId]);
-  if (result.length === 0) return res.json({ responses: [] });
-
-  const cols = result[0].columns;
-  const responses = result[0].values.map(row => {
-    const obj = {};
-    cols.forEach((c, i) => obj[c] = row[i]);
-    return obj;
-  });
-  res.json({ responses });
+app.get('/api/questionnaire/responses', requireAuth, async (req, res) => {
+  const result = await db.execute({ sql: "SELECT * FROM questionnaire_responses WHERE user_id = ? ORDER BY section, question_id", args: [req.session.userId] });
+  if (result.rows.length === 0) return res.json({ responses: [] });
+  res.json({ responses: rowsToObjects(result) });
 });
 
 // ===== ML PROCESSING =====
-app.post('/api/ml/process', requireAuth, (req, res) => {
+app.post('/api/ml/process', requireAuth, async (req, res) => {
   try {
-    // Get questionnaire responses
-    const qResult = db.exec("SELECT * FROM questionnaire_responses WHERE user_id = ?", [req.session.userId]);
-    if (qResult.length === 0 || qResult[0].values.length === 0) {
+    const qResult = await db.execute({ sql: "SELECT * FROM questionnaire_responses WHERE user_id = ?", args: [req.session.userId] });
+    if (qResult.rows.length === 0) {
       return res.status(400).json({ error: 'No questionnaire data found. Complete the questionnaire first.' });
     }
 
-    const cols = qResult[0].columns;
-    const responses = qResult[0].values.map(row => {
-      const obj = {};
-      cols.forEach((c, i) => obj[c] = row[i]);
-      return obj;
-    });
+    const responses = rowsToObjects(qResult);
 
-    // Get health profile
-    const hpResult = db.exec("SELECT * FROM health_profiles WHERE user_id = ?", [req.session.userId]);
+    const hpResult = await db.execute({ sql: "SELECT * FROM health_profiles WHERE user_id = ?", args: [req.session.userId] });
     let healthProfile = null;
-    if (hpResult.length > 0 && hpResult[0].values.length > 0) {
+    if (hpResult.rows.length > 0) {
       healthProfile = {};
-      hpResult[0].columns.forEach((c, i) => healthProfile[c] = hpResult[0].values[0][i]);
+      hpResult.columns.forEach((c, i) => healthProfile[c] = hpResult.rows[0][i]);
     }
 
-    // Get user personal info (DOB, gender) for model features
-    const userResult = db.exec("SELECT date_of_birth, gender FROM users WHERE id = ?", [req.session.userId]);
+    const userResult = await db.execute({ sql: "SELECT date_of_birth, gender FROM users WHERE id = ?", args: [req.session.userId] });
     let userInfo = {};
-    if (userResult.length > 0 && userResult[0].values.length > 0) {
-      userResult[0].columns.forEach((c, i) => userInfo[c] = userResult[0].values[0][i]);
+    if (userResult.rows.length > 0) {
+      userResult.columns.forEach((c, i) => userInfo[c] = userResult.rows[0][i]);
     }
 
     // ===== DUAL MODEL PROCESSING =====
     const mlResult = processWithDualModels(responses, healthProfile, userInfo);
 
     // Save results
-    const existingML = db.exec("SELECT id FROM ml_results WHERE user_id = ?", [req.session.userId]);
-    if (existingML.length > 0 && existingML[0].values.length > 0) {
-      db.run(`UPDATE ml_results SET autism_score=?, autism_level=?, risk_category=?,
+    const existingML = await db.execute({ sql: "SELECT id FROM ml_results WHERE user_id = ?", args: [req.session.userId] });
+    if (existingML.rows.length > 0) {
+      await db.execute({ sql: `UPDATE ml_results SET autism_score=?, autism_level=?, risk_category=?,
         sensory_visual=?, sensory_auditory=?, sensory_tactile=?, sensory_olfactory=?,
         sensory_vestibular=?, sensory_proprioceptive=?, sensory_interoceptive=?,
         social_communication=?, repetitive_behaviors=?, emotional_regulation=?, executive_function=?,
         pattern_type=?, confidence=?, recommendations=?, detailed_report=?, created_at=datetime('now')
         WHERE user_id=?`,
-        [mlResult.autism_score, mlResult.autism_level, mlResult.risk_category,
+        args: [mlResult.autism_score, mlResult.autism_level, mlResult.risk_category,
           mlResult.sensory.visual, mlResult.sensory.auditory, mlResult.sensory.tactile,
           mlResult.sensory.olfactory, mlResult.sensory.vestibular, mlResult.sensory.proprioceptive,
           mlResult.sensory.interoceptive,
@@ -379,25 +356,24 @@ app.post('/api/ml/process', requireAuth, (req, res) => {
           mlResult.domains.emotional_regulation, mlResult.domains.executive_function,
           mlResult.pattern_type, mlResult.confidence,
           JSON.stringify(mlResult.recommendations), JSON.stringify(mlResult.detailed_report),
-          req.session.userId]);
+          req.session.userId] });
     } else {
-      db.run(`INSERT INTO ml_results (id, user_id, autism_score, autism_level, risk_category,
+      await db.execute({ sql: `INSERT INTO ml_results (id, user_id, autism_score, autism_level, risk_category,
         sensory_visual, sensory_auditory, sensory_tactile, sensory_olfactory,
         sensory_vestibular, sensory_proprioceptive, sensory_interoceptive,
         social_communication, repetitive_behaviors, emotional_regulation, executive_function,
         pattern_type, confidence, recommendations, detailed_report)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [uuidv4(), req.session.userId, mlResult.autism_score, mlResult.autism_level, mlResult.risk_category,
+        args: [uuidv4(), req.session.userId, mlResult.autism_score, mlResult.autism_level, mlResult.risk_category,
           mlResult.sensory.visual, mlResult.sensory.auditory, mlResult.sensory.tactile,
           mlResult.sensory.olfactory, mlResult.sensory.vestibular, mlResult.sensory.proprioceptive,
           mlResult.sensory.interoceptive,
           mlResult.domains.social_communication, mlResult.domains.repetitive_behaviors,
           mlResult.domains.emotional_regulation, mlResult.domains.executive_function,
           mlResult.pattern_type, mlResult.confidence,
-          JSON.stringify(mlResult.recommendations), JSON.stringify(mlResult.detailed_report)]);
+          JSON.stringify(mlResult.recommendations), JSON.stringify(mlResult.detailed_report)] });
     }
 
-    saveDB();
     res.json({ success: true, results: mlResult });
   } catch (err) {
     console.error(err);
@@ -405,15 +381,13 @@ app.post('/api/ml/process', requireAuth, (req, res) => {
   }
 });
 
-app.get('/api/ml/results', requireAuth, (req, res) => {
-  const result = db.exec("SELECT * FROM ml_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 1", [req.session.userId]);
-  if (result.length === 0 || result[0].values.length === 0) {
+app.get('/api/ml/results', requireAuth, async (req, res) => {
+  const result = await db.execute({ sql: "SELECT * FROM ml_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 1", args: [req.session.userId] });
+  if (result.rows.length === 0) {
     return res.json({ results: null });
   }
-  const cols = result[0].columns;
-  const row = result[0].values[0];
   const obj = {};
-  cols.forEach((c, i) => obj[c] = row[i]);
+  result.columns.forEach((c, i) => obj[c] = result.rows[0][i]);
 
   if (obj.recommendations) obj.recommendations = JSON.parse(obj.recommendations);
   if (obj.detailed_report) obj.detailed_report = JSON.parse(obj.detailed_report);
@@ -422,32 +396,25 @@ app.get('/api/ml/results', requireAuth, (req, res) => {
 });
 
 // ===== SENSORY ENTRIES (ongoing tracking) =====
-app.post('/api/entries/add', requireAuth, (req, res) => {
+app.post('/api/entries/add', requireAuth, async (req, res) => {
   try {
     const e = req.body;
-    db.run(`INSERT INTO sensory_entries (id, user_id, entry_date, environment, duration_min,
+    await db.execute({ sql: `INSERT INTO sensory_entries (id, user_id, entry_date, environment, duration_min,
       visual, auditory, tactile, olfactory, vestibular, proprioceptive,
       meltdown, stimming, mood, notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [uuidv4(), req.session.userId, e.entry_date, e.environment, e.duration_min,
+      args: [uuidv4(), req.session.userId, e.entry_date, e.environment, e.duration_min,
         e.visual, e.auditory, e.tactile, e.olfactory, e.vestibular, e.proprioceptive,
-        e.meltdown, e.stimming, e.mood, e.notes]);
-    saveDB();
+        e.meltdown, e.stimming, e.mood, e.notes] });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-app.get('/api/entries', requireAuth, (req, res) => {
-  const result = db.exec("SELECT * FROM sensory_entries WHERE user_id = ? ORDER BY created_at DESC", [req.session.userId]);
-  if (result.length === 0) return res.json({ entries: [] });
-  const cols = result[0].columns;
-  const entries = result[0].values.map(row => {
-    const obj = {};
-    cols.forEach((c, i) => obj[c] = row[i]);
-    return obj;
-  });
-  res.json({ entries });
+app.get('/api/entries', requireAuth, async (req, res) => {
+  const result = await db.execute({ sql: "SELECT * FROM sensory_entries WHERE user_id = ? ORDER BY created_at DESC", args: [req.session.userId] });
+  if (result.rows.length === 0) return res.json({ entries: [] });
+  res.json({ entries: rowsToObjects(result) });
 });
 
 // ============================================================
@@ -484,8 +451,6 @@ function relu(x) { return Math.max(0, x); }
 function sigmoid(x) { return 1 / (1 + Math.exp(-Math.max(-500, Math.min(500, x)))); }
 
 // ── Feature Mapping: NeuroSense → AQ-10 feature space ────
-// Maps 11 questionnaire domain scores + health profile to
-// the 14 features the trained models expect (10 AQ-10 + 4 demographic)
 function mapToAQ10Features(sensory, domains, healthProfile, userInfo) {
   const sc = domains.social_communication / 10;
   const rb = domains.repetitive_behaviors / 10;
@@ -494,8 +459,7 @@ function mapToAQ10Features(sensory, domains, healthProfile, userInfo) {
   const vis = sensory.visual / 10;
   const aud = sensory.auditory / 10;
 
-  // Calculate age from date_of_birth
-  let age = 25; // default
+  let age = 25;
   if (userInfo?.date_of_birth) {
     const dob = new Date(userInfo.date_of_birth);
     if (!isNaN(dob.getTime())) {
@@ -503,7 +467,6 @@ function mapToAQ10Features(sensory, domains, healthProfile, userInfo) {
     }
   }
 
-  // Gender: 1 = male, 0 = female
   let gender = 0;
   if (userInfo?.gender) {
     gender = userInfo.gender.toLowerCase().startsWith('m') ? 1 : 0;
@@ -534,7 +497,6 @@ function predictRF(features) {
   let totalProb = 0;
   for (const treeNodes of rfModel.trees) {
     let idx = 0;
-    // Traverse tree: f === -2 means leaf node (sklearn TREE_UNDEFINED)
     while (treeNodes[idx].f !== -2) {
       if (features[treeNodes[idx].f] <= treeNodes[idx].t) {
         idx = treeNodes[idx].l;
@@ -542,7 +504,6 @@ function predictRF(features) {
         idx = treeNodes[idx].r;
       }
     }
-    // Leaf value: [n_class0, n_class1]
     const v = treeNodes[idx].v;
     const total = v[0] + v[1];
     totalProb += total > 0 ? v[1] / total : 0.5;
@@ -560,13 +521,11 @@ function predictRF(features) {
 function predictNN(features) {
   if (!nnModel) return null;
 
-  // Apply StandardScaler normalization
   let x = features.slice();
   if (nnModel.scaler) {
     x = x.map((v, i) => (v - nnModel.scaler.mean[i]) / nnModel.scaler.scale[i]);
   }
 
-  // Forward pass through each layer
   const layerActivations = [];
   let h = x;
   for (let i = 0; i < nnModel.layers.length; i++) {
@@ -579,19 +538,17 @@ function predictNN(features) {
       return isOutput ? sigmoid(sum) : relu(sum);
     });
 
-    // Store average activation for visualization
     layerActivations.push(h.reduce((a, b) => a + b, 0) / h.length);
   }
 
   return {
-    score: h[0],  // 0-1 probability
+    score: h[0],
     layerActivations: layerActivations
   };
 }
 
 // ── Main Processing Function (Dual Model) ─────────────────
 function processWithDualModels(responses, healthProfile, userInfo) {
-  // 1. Parse questionnaire into domain scores
   const sectionScores = {};
   responses.forEach(r => {
     if (!sectionScores[r.section]) sectionScores[r.section] = [];
@@ -617,17 +574,10 @@ function processWithDualModels(responses, healthProfile, userInfo) {
     executive_function: avgScore(sectionScores['executive_function'] || [5]),
   };
 
-  // 2. Map NeuroSense features → AQ-10 feature space (14 features)
   const aq10Features = mapToAQ10Features(sensory, domains, healthProfile, userInfo);
-
-  // 3. Run Model 1: Random Forest Classifier
   const rfResult = predictRF(aq10Features);
-
-  // 4. Run Model 2: Neural Network MLP
   const nnResult = predictNN(aq10Features);
 
-  // 5. Compute autism score (0-100)
-  // Direct score from questionnaire (fallback baseline)
   const directScore = (
     Object.values(sensory).reduce((a, b) => a + b, 0) / 7 * 0.4 +
     Object.values(domains).reduce((a, b) => a + b, 0) / 4 * 0.6
@@ -637,7 +587,6 @@ function processWithDualModels(responses, healthProfile, userInfo) {
   let modelMode;
 
   if (rfResult && nnResult) {
-    // Dual model: 40% RF probability + 40% NN score + 20% direct
     autism_score = Math.round((
       rfResult.probability * 100 * 0.4 +
       nnResult.score * 100 * 0.4 +
@@ -655,10 +604,8 @@ function processWithDualModels(responses, healthProfile, userInfo) {
     modelMode = 'fallback';
   }
 
-  // Clamp to 0-100
   autism_score = Math.max(0, Math.min(100, autism_score));
 
-  // 6. Determine autism level
   let autism_level, risk_category;
   if (autism_score >= 75) {
     autism_level = 'Level 3 — Requiring Very Substantial Support';
@@ -677,7 +624,6 @@ function processWithDualModels(responses, healthProfile, userInfo) {
     risk_category = 'Low';
   }
 
-  // 7. Pattern type (from sensory profile)
   const sensoryAvg = Object.values(sensory).reduce((a, b) => a + b, 0) / 7;
   const sensoryVar = Object.values(sensory).reduce((a, v) => a + Math.pow(v - sensoryAvg, 2), 0) / 7;
   let pattern_type;
@@ -686,21 +632,17 @@ function processWithDualModels(responses, healthProfile, userInfo) {
   else if (sensoryVar > 4) pattern_type = 'Mixed Responsivity (Variable)';
   else pattern_type = 'Moderate / Stable Processing';
 
-  // 8. Confidence — from models if available, else heuristic
   let confidence;
   if (rfResult && nnResult) {
-    // Average of RF confidence and NN-based confidence
     const nnConf = Math.abs(nnResult.score - 0.5) * 2 * 100;
-    confidence = Math.round((rfResult.confidence * 0.5 + nnConf * 0.3 + 20) * 10) / 10; // 20% base from data completeness
+    confidence = Math.round((rfResult.confidence * 0.5 + nnConf * 0.3 + 20) * 10) / 10;
   } else {
     confidence = Math.min(92, 70 + responses.length * 0.3);
   }
   confidence = Math.min(98, confidence);
 
-  // 9. Recommendations (rule-based, unchanged)
   const recommendations = generateDetailedRecommendations(sensory, domains, autism_score, autism_level, pattern_type, healthProfile);
 
-  // 10. Detailed report with model info
   const detailed_report = {
     summary: `Based on comprehensive analysis of ${responses.length} questionnaire responses using ${modelMode === 'dual-model' ? 'dual AI models (Random Forest + Neural Network)' : modelMode === 'fallback' ? 'direct scoring' : 'trained ML model'}, the NeuroSense engine has computed an autism spectrum score of ${autism_score}/100.`,
     sensory_profile: Object.entries(sensory).map(([k, v]) => ({
@@ -770,7 +712,6 @@ function getSensoryDescription(channel, score) {
 function generateDetailedRecommendations(sensory, domains, score, level, pattern, healthProfile) {
   const recs = [];
 
-  // Environmental accommodations
   if (sensory.auditory >= 6) {
     recs.push({
       category: 'Environment', priority: 'high', title: 'Noise Management',
@@ -814,7 +755,6 @@ function generateDetailedRecommendations(sensory, domains, score, level, pattern
     });
   }
 
-  // Therapeutic recommendations
   if (score >= 35) {
     recs.push({
       category: 'Therapy', priority: 'high', title: 'Occupational Therapy',
@@ -872,7 +812,6 @@ function generateDetailedRecommendations(sensory, domains, score, level, pattern
     });
   }
 
-  // Sensory diet
   recs.push({
     category: 'Sensory Diet', priority: 'medium', title: 'Daily Sensory Diet',
     description: `Based on your ${pattern} profile, a structured sensory diet will help maintain regulation.`,
@@ -886,7 +825,6 @@ function generateDetailedRecommendations(sensory, domains, score, level, pattern
     ]
   });
 
-  // Lifestyle
   if (healthProfile && healthProfile.sleep_hours < 7) {
     recs.push({
       category: 'Lifestyle', priority: 'high', title: 'Sleep Optimization',
@@ -928,7 +866,6 @@ function generateDetailedRecommendations(sensory, domains, score, level, pattern
     ]
   });
 
-  // Medical
   if (score >= 45) {
     recs.push({
       category: 'Medical', priority: 'high', title: 'Professional Evaluation',
@@ -957,65 +894,55 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-app.get('/api/admin/stats', requireAdmin, (req, res) => {
-  const userCount = db.exec("SELECT COUNT(*) FROM users");
-  const assessedCount = db.exec("SELECT COUNT(DISTINCT user_id) FROM ml_results");
-  const questionnaireCount = db.exec("SELECT COUNT(DISTINCT user_id) FROM questionnaire_responses");
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+  const userCount = await db.execute("SELECT COUNT(*) as cnt FROM users");
+  const assessedCount = await db.execute("SELECT COUNT(DISTINCT user_id) as cnt FROM ml_results");
+  const questionnaireCount = await db.execute("SELECT COUNT(DISTINCT user_id) as cnt FROM questionnaire_responses");
   res.json({
-    total_users: userCount[0]?.values[0]?.[0] || 0,
-    users_with_assessments: assessedCount[0]?.values[0]?.[0] || 0,
-    users_with_questionnaires: questionnaireCount[0]?.values[0]?.[0] || 0
+    total_users: userCount.rows[0][0] || 0,
+    users_with_assessments: assessedCount.rows[0][0] || 0,
+    users_with_questionnaires: questionnaireCount.rows[0][0] || 0
   });
 });
 
-app.get('/api/admin/users', requireAdmin, (req, res) => {
-  const result = db.exec(`
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  const result = await db.execute(`
     SELECT id, email, first_name, last_name, date_of_birth, gender,
            created_at, onboarding_complete, questionnaire_complete
     FROM users ORDER BY created_at DESC
   `);
-  if (result.length === 0) return res.json({ users: [], count: 0 });
-  const cols = result[0].columns;
-  const users = result[0].values.map(row => {
-    const obj = {};
-    cols.forEach((c, i) => obj[c] = row[i]);
-    return obj;
-  });
-  res.json({ users, count: users.length });
+  if (result.rows.length === 0) return res.json({ users: [], count: 0 });
+  res.json({ users: rowsToObjects(result), count: result.rows.length });
 });
 
-app.get('/api/admin/users/:userId/assessment', requireAdmin, (req, res) => {
+app.get('/api/admin/users/:userId/assessment', requireAdmin, async (req, res) => {
   const userId = req.params.userId;
 
-  const userResult = db.exec("SELECT id, email, first_name, last_name, created_at FROM users WHERE id = ?", [userId]);
-  if (userResult.length === 0 || userResult[0].values.length === 0) {
+  const userResult = await db.execute({ sql: "SELECT id, email, first_name, last_name, created_at FROM users WHERE id = ?", args: [userId] });
+  if (userResult.rows.length === 0) {
     return res.status(404).json({ error: 'User not found' });
   }
   const user = {};
-  userResult[0].columns.forEach((c, i) => user[c] = userResult[0].values[0][i]);
+  userResult.columns.forEach((c, i) => user[c] = userResult.rows[0][i]);
 
-  const hpResult = db.exec("SELECT * FROM health_profiles WHERE user_id = ?", [userId]);
+  const hpResult = await db.execute({ sql: "SELECT * FROM health_profiles WHERE user_id = ?", args: [userId] });
   let healthProfile = null;
-  if (hpResult.length > 0 && hpResult[0].values.length > 0) {
+  if (hpResult.rows.length > 0) {
     healthProfile = {};
-    hpResult[0].columns.forEach((c, i) => healthProfile[c] = hpResult[0].values[0][i]);
+    hpResult.columns.forEach((c, i) => healthProfile[c] = hpResult.rows[0][i]);
   }
 
-  const qResult = db.exec("SELECT section, question_id, question_text, answer_value FROM questionnaire_responses WHERE user_id = ? ORDER BY section, question_id", [userId]);
+  const qResult = await db.execute({ sql: "SELECT section, question_id, question_text, answer_value FROM questionnaire_responses WHERE user_id = ? ORDER BY section, question_id", args: [userId] });
   let responses = [];
-  if (qResult.length > 0) {
-    responses = qResult[0].values.map(row => {
-      const obj = {};
-      qResult[0].columns.forEach((c, i) => obj[c] = row[i]);
-      return obj;
-    });
+  if (qResult.rows.length > 0) {
+    responses = rowsToObjects(qResult);
   }
 
-  const mlResult = db.exec("SELECT * FROM ml_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 1", [userId]);
+  const mlResult = await db.execute({ sql: "SELECT * FROM ml_results WHERE user_id = ? ORDER BY created_at DESC LIMIT 1", args: [userId] });
   let mlResults = null;
-  if (mlResult.length > 0 && mlResult[0].values.length > 0) {
+  if (mlResult.rows.length > 0) {
     mlResults = {};
-    mlResult[0].columns.forEach((c, i) => mlResults[c] = mlResult[0].values[0][i]);
+    mlResult.columns.forEach((c, i) => mlResults[c] = mlResult.rows[0][i]);
     try { if (mlResults.recommendations) mlResults.recommendations = JSON.parse(mlResults.recommendations); } catch(e) {}
     try { if (mlResults.detailed_report) mlResults.detailed_report = JSON.parse(mlResults.detailed_report); } catch(e) {}
   }
