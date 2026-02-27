@@ -902,10 +902,12 @@
       .qn       { gap: 8px; }
 
       /* Dashboard page header */
-      .ph       { flex-direction: column; gap: 12px; }
-      .ph h1    { font-size: 22px; }
-      .ph > div:last-child { width: 100%; display: flex; }
-      .ph > div:last-child .btn { flex: 1; font-size: 13px; padding: 10px 12px; }
+      .ph       { flex-direction: column; gap: 12px; margin-bottom: 20px; }
+      .ph > div { width: 100%; }
+      .ph h1    { font-size: 20px; line-height: 1.3; display: block; }
+      .ph p     { font-size: 12px; margin-top: 4px; display: block; }
+      .ph > div:last-child:not(:first-child) { display: flex; }
+      .ph > div:last-child:not(:first-child) .btn { flex: 1; font-size: 13px; padding: 10px 12px; }
 
       /* Metric cards */
       .mr       { grid-template-columns: 1fr; gap: 10px; }
@@ -1225,8 +1227,8 @@
      DASHBOARD
 ════════════════════════════════════════ -->
 <div class="page" id="pg-dash">
-  <div class="mob-overlay" id="mobOv" onclick="toggleMobNav()"></div>
   <div class="app">
+    <div class="mob-overlay" id="mobOv" onclick="toggleMobNav()"></div>
 
     <!-- Mobile header -->
     <div class="mob-hdr">
