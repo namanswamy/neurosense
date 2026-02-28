@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Insights — NeuroSense</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shared.css">
+</head>
+<body>
+<div class="mesh"></div>
+<div class="blob b1"></div>
+<div class="blob b2"></div>
+
+<div class="app">
+
+<!-- ════════ SIDEBAR ════════ -->
+<aside class="sb">
+  <div class="sbl">
+    <div class="sbli">🧠</div>
+    <div class="sblt">Neuro<span>Sense</span></div>
+  </div>
+  <div class="sb-sect">Core</div>
+  <a class="nav-item" href="../index.html" data-page="index.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Overview
+  </a>
+  <a class="nav-item active" href="daily.html" data-page="daily.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Daily Insights
+    <span class="nav-badge nb-new">New</span>
+  </a>
+  <a class="nav-item" href="analytics.html" data-page="analytics.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Analytics
+  </a>
+  <div class="sb-sect">Clinical</div>
+  <a class="nav-item" href="therapist.html" data-page="therapist.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Therapist Portal
+  </a>
+  <a class="nav-item" href="action-plan.html" data-page="action-plan.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    Action Plan
+    <span class="nav-badge nb-streak" id="sb-streak-badge">🔥 0</span>
+  </a>
+  <div class="sb-sect">Community</div>
+  <a class="nav-item" href="community.html" data-page="community.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+    Community
+  </a>
+  <div class="sbf">
+    <div class="streak-bar">
+      <span class="streak-flame">🔥</span>
+      <span id="sb-streak-count">Loading streak...</span>
+    </div>
+    <div class="user-card" style="margin-top:8px">
+      <div class="user-av" id="sb-user-av">--</div>
+      <div>
+        <div class="user-name" id="sb-user-name">Loading...</div>
+        <div class="user-role" id="sb-user-role">Parent</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ════════ MAIN ════════ -->
+<main class="mn">
+  <div class="ph">
+    <div class="ph-l">
+      <h1>Daily Insights</h1>
+      <p>Track your day · spot patterns · feel heard</p>
+    </div>
+    <div class="ph-r">
+      <div style="display:flex;align-items:center;gap:6px;font-family:var(--fd);font-size:28px;font-weight:700;color:var(--amber)">
+        <span class="streak-flame">🔥</span><span id="streak-num">0</span>
+      </div>
+      <button class="btn btn-sm" onclick="exportLogs()">📤 Export Logs</button>
+    </div>
+  </div>
+
+  <!-- ── CHECK-IN BOX ── -->
+  <div class="checkin-box">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+      <div>
+        <div style="font-family:var(--fd);font-size:20px;font-weight:600;margin-bottom:4px" id="greeting">Good morning 🌿</div>
+        <div style="font-size:13.5px;color:var(--t2)">How is your child feeling today? Quick 30-second check-in.</div>
+      </div>
+      <div style="font-family:var(--fm);font-size:11px;color:var(--t3);text-align:right" id="today-date"></div>
+    </div>
+
+    <div class="g3" style="margin-bottom:0">
+      <!-- Mood -->
+      <div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);margin-bottom:10px">Overall Mood</div>
+        <div class="emoji-row" id="mood-row">
+          <div class="emoji-opt" onclick="pickEmoji(this,'mood','very_distressed')" title="Very distressed">😰</div>
+          <div class="emoji-opt" onclick="pickEmoji(this,'mood','anxious')" title="Anxious">😟</div>
+          <div class="emoji-opt" onclick="pickEmoji(this,'mood','neutral')" title="Neutral">😐</div>
+          <div class="emoji-opt" onclick="pickEmoji(this,'mood','good')" title="Good">🙂</div>
+          <div class="emoji-opt" onclick="pickEmoji(this,'mood','great')" title="Great">😄</div>
+        </div>
+      </div>
+      <!-- Stress Slider -->
+      <div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);margin-bottom:10px">
+          Sensory Stress <span id="stressVal" style="color:var(--sage);font-family:var(--fm)">5</span>/10
+        </div>
+        <input type="range" id="stress-slider" min="0" max="10" value="5"
+          oninput="updateStress(this.value)">
+        <div class="slider-labels"><span>Calm</span><span>Moderate</span><span>Overwhelmed</span></div>
+      </div>
+      <!-- Comfort -->
+      <div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--t2);margin-bottom:10px">Sensory Comfort</div>
+        <div class="emoji-row" id="comfort-row">
+          <div class="emoji-opt" onclick="pickEmoji(this,'comfort','very_uncomfortable')" title="Very uncomfortable">🔴</div>
+          <div class="emoji-opt" onclick="pickEmoji(this,'comfort','uncomfortable')" title="Uncomfortable">🟠</div>
+          <div class="emoji-opt" onclick="pickEmoji(this,'comfort','okay')" title="Okay">🟡</div>
+          <div class="emoji-opt" onclick="pickEmoji(this,'comfort','comfortable')" title="Comfortable">🟢</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:18px;display:flex;justify-content:flex-end">
+      <button class="btn btn-p" id="save-checkin">Save Check-in ✓</button>
+    </div>
+  </div>
+
+  <!-- ── TABS ── -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(this,'t-journal')">📔 Trigger Journal</div>
+    <div class="tab" onclick="switchTab(this,'t-sleep')">😴 Sleep & Appetite</div>
+    <div class="tab" onclick="switchTab(this,'t-meltdown')">⚡ Meltdown Log</div>
+    <div class="tab" onclick="switchTab(this,'t-trends')">📈 Trends</div>
+  </div>
+
+  <!-- ════ TAB: TRIGGER JOURNAL ════ -->
+  <div id="t-journal">
+    <div class="g2" style="margin-bottom:20px">
+      <!-- Log Form -->
+      <div class="card">
+        <div class="ch"><div><div class="ct">Log New Event</div></div></div>
+        <div class="fg"><label>What happened?</label>
+          <input type="text" id="trig-title" placeholder="e.g. School cafeteria was very loud"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="fg">
+            <label>Trigger Category</label>
+            <select id="trig-cat">
+              <option value="auditory">Auditory — Loud sounds</option>
+              <option value="visual">Visual — Bright lights</option>
+              <option value="tactile">Tactile — Clothing/touch</option>
+              <option value="social">Social — Crowding</option>
+              <option value="routine">Routine — Unexpected change</option>
+              <option value="smell">Smell — Strong odor</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Severity (1–10) <span id="sevVal" style="color:var(--coral);font-family:var(--fm)">6</span></label>
+            <input type="range" id="sev-slider" min="1" max="10" value="6"
+              oninput="document.getElementById('sevVal').textContent=this.value">
+          </div>
+        </div>
+        <div class="fg"><label>Notes (optional)</label>
+          <textarea id="trig-notes" placeholder="What helped? How long did it last? What was the environment like?"></textarea></div>
+        <button class="btn btn-p" style="width:100%" onclick="logTrigger()">Log Event</button>
+      </div>
+      <!-- Recent triggers -->
+      <div class="card">
+        <div class="ch"><div><div class="ct">Recent Triggers</div><div class="cs">Last 7 days</div></div></div>
+        <div id="trigger-list">
+          <!-- Populated by JS from localStorage -->
+          <div style="text-align:center;color:var(--t3);padding:20px;font-size:13px">No triggers logged yet. Log your first event →</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ TAB: SLEEP & APPETITE ════ -->
+  <div id="t-sleep" style="display:none">
+    <div class="g3">
+      <div class="card">
+        <div class="ch"><div><div class="ct">Sleep This Week</div><div class="cs">Hours per night</div></div></div>
+        <canvas class="chart" id="c-sleep" height="160"></canvas>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+          <div style="text-align:center;padding:12px;background:var(--sagel);border-radius:var(--r1)">
+            <div style="font-family:var(--fd);font-size:22px;font-weight:700;color:var(--sage)" id="sleep-avg">—</div>
+            <div style="font-size:11px;color:var(--t2)">Avg this week</div>
+          </div>
+          <div style="text-align:center;padding:12px;background:var(--amberl);border-radius:var(--r1)">
+            <div style="font-family:var(--fd);font-size:22px;font-weight:700;color:var(--amber)" id="sleep-delta">—</div>
+            <div style="font-size:11px;color:var(--t2)">vs last week</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><div><div class="ct">Appetite Patterns</div><div class="cs">Meal acceptance rate</div></div></div>
+        <canvas class="chart" id="c-appetite" height="160"></canvas>
+        <div class="notif notif-amber" style="margin-top:12px;margin-bottom:0;font-size:12px">⚠️ Appetite was lower on high-stress days</div>
+      </div>
+      <div class="card">
+        <div class="ch"><div><div class="ct">Sleep ↔ Sensory Correlation</div><div class="cs">Impact analysis</div></div></div>
+        <div style="padding:16px 0">
+          <div class="bench-bar"><div class="bench-label">Sleep &lt;6h</div><div class="bench-track"><div class="bench-fill-you" style="width:78%"></div></div><div class="bench-val" style="color:var(--coral)">7.8</div></div>
+          <div class="bench-bar"><div class="bench-label">Sleep 6–7h</div><div class="bench-track"><div class="bench-fill-you" style="width:55%;background:linear-gradient(90deg,var(--amber),#e8b95a)"></div></div><div class="bench-val" style="color:var(--amber)">5.5</div></div>
+          <div class="bench-bar"><div class="bench-label">Sleep 7–8h</div><div class="bench-track"><div class="bench-fill-you" style="width:32%"></div></div><div class="bench-val" style="color:var(--sage)">3.2</div></div>
+          <div class="bench-bar"><div class="bench-label">Sleep &gt;8h</div><div class="bench-track"><div class="bench-fill-you" style="width:20%"></div></div><div class="bench-val" style="color:var(--sage)">2.0</div></div>
+        </div>
+        <div style="font-size:12px;color:var(--t3);text-align:center;border-top:1.5px solid var(--bd);padding-top:10px">Sensory sensitivity score vs. sleep duration</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><div><div class="ct">Log Today's Sleep & Appetite</div></div></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <div class="fg"><label>Bedtime</label><input type="time" id="bedtime" value="22:30"></div>
+        <div class="fg"><label>Wake time</label><input type="time" id="waketime" value="07:00"></div>
+        <div class="fg"><label>Sleep quality</label>
+          <select id="sleep-quality"><option>Restful</option><option>Okay</option><option>Disturbed</option><option>Very poor</option></select></div>
+        <div class="fg"><label>Appetite today</label>
+          <select id="appetite"><option>Great</option><option>Normal</option><option>Reduced</option><option>Refused meals</option></select></div>
+      </div>
+      <button class="btn btn-p btn-sm" onclick="logSleep()">Save Sleep Log</button>
+    </div>
+  </div>
+
+  <!-- ════ TAB: MELTDOWN LOG ════ -->
+  <div id="t-meltdown" style="display:none">
+    <div class="notif notif-coral" id="meltdown-pattern">
+      ⚡ <strong>Log your first meltdown</strong> to start detecting patterns.
+    </div>
+    <div class="g2">
+      <div class="card">
+        <div class="ch"><div><div class="ct">Meltdown Frequency</div><div class="cs">Last 30 days</div></div></div>
+        <canvas class="chart" id="c-meltdown" height="160"></canvas>
+      </div>
+      <div class="card">
+        <div class="ch"><div><div class="ct">Top Repeated Triggers</div><div class="cs">Pattern analysis</div></div></div>
+        <div id="trigger-pattern-bars" style="display:flex;flex-direction:column;gap:8px;padding:4px 0">
+          <div style="text-align:center;color:var(--t3);font-size:12px;padding:16px">Log events to see patterns</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><div><div class="ct">Log a Meltdown Event</div></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div class="fg"><label>Date & Time</label><input type="datetime-local" id="melt-datetime"></div>
+        <div class="fg"><label>Duration</label>
+          <select id="melt-duration"><option>Under 5 minutes</option><option>5–15 minutes</option><option>15–30 minutes</option><option>30+ minutes</option></select></div>
+        <div class="fg"><label>Type</label>
+          <select id="melt-type"><option>Meltdown</option><option>Shutdown</option><option>Near-meltdown</option></select></div>
+      </div>
+      <div class="fg"><label>Primary trigger</label><input type="text" id="melt-trigger" placeholder="What set it off?"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="fg"><label>Environment</label><input type="text" id="melt-env" placeholder="Where were you?"></div>
+        <div class="fg"><label>What helped?</label><input type="text" id="melt-helped" placeholder="What de-escalated it?"></div>
+      </div>
+      <button class="btn btn-p btn-sm" onclick="logMeltdown()">Save Meltdown Log</button>
+    </div>
+  </div>
+
+  <!-- ════ TAB: TRENDS ════ -->
+  <div id="t-trends" style="display:none">
+    <div class="g2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="ch"><div><div class="ct">Daily Stress Score — 8 Weeks</div><div class="cs">Lower is better</div></div></div>
+        <canvas class="chart tall" id="c-stress-trend" height="220"></canvas>
+      </div>
+      <div class="card">
+        <div class="ch"><div><div class="ct">Mood Distribution</div><div class="cs">Last 30 days</div></div></div>
+        <canvas class="chart tall" id="c-mood" height="220"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><div><div class="ct">Activity Heatmap — Daily Logs</div><div class="cs">Darker = more active logging days</div></div></div>
+      <div style="margin-bottom:8px;font-size:11px;color:var(--t3);display:flex;gap:16px">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+      <div class="heatmap" id="heatmap"></div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:12px;font-size:11px;color:var(--t3)">
+        Less
+        <div style="display:flex;gap:3px;margin:0 4px">
+          <div style="width:14px;height:14px;border-radius:3px;background:var(--bg3)"></div>
+          <div style="width:14px;height:14px;border-radius:3px;background:rgba(109,184,154,.2)"></div>
+          <div style="width:14px;height:14px;border-radius:3px;background:rgba(109,184,154,.4)"></div>
+          <div style="width:14px;height:14px;border-radius:3px;background:var(--sage)"></div>
+        </div>
+        More
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════
+     SCRIPTS
+═══════════════════════════════════ -->
+<script src="../js/neurosense.js"></script>
+<script>
+
+// ── STATE ──
+let selectedMood    = 'neutral';
+let selectedComfort = 'okay';
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', () => {
+  if (!NeuroSense.requireAuth()) return;
+  NeuroSense.initSidebar();
+
+  // Streak
+  const streak = NeuroSense.getStreak();
+  document.getElementById('streak-num').textContent = streak;
+  document.getElementById('sb-streak-badge').textContent = '🔥 ' + streak;
+
+  // Greeting
+  const h = new Date().getHours();
+  const user = NeuroSense.getUser();
+  const name = user?.name || '';
+  const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting').textContent = greet + (name ? ', ' + name : '') + ' 🌿';
+
+  // Today date
+  document.getElementById('today-date').innerHTML =
+    new Date().toLocaleDateString('en-IN',{weekday:'long'}) + '<br>' +
+    new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+
+  // Pre-select middle emoji as default
+  document.querySelector('#mood-row .emoji-opt:nth-child(3)').classList.add('sel');
+  document.querySelector('#comfort-row .emoji-opt:nth-child(3)').classList.add('sel');
+
+  // Render saved triggers
+  renderTriggerList();
+  drawCharts();
+});
+
+// ── EMOJI PICKER ──
+function pickEmoji(el, group, value) {
+  el.closest('.emoji-row').querySelectorAll('.emoji-opt').forEach(e => e.classList.remove('sel'));
+  el.classList.add('sel');
+  if (group === 'mood')    selectedMood    = value;
+  if (group === 'comfort') selectedComfort = value;
+}
+
+// ── STRESS SLIDER ──
+function updateStress(v) {
+  const el = document.getElementById('stressVal');
+  el.textContent = v;
+  el.style.color = v <= 3 ? 'var(--sage)' : v <= 6 ? 'var(--amber)' : 'var(--coral)';
+}
+
+// ── SAVE CHECK-IN ──
+document.getElementById('save-checkin').addEventListener('click', () => {
+  const stress  = document.getElementById('stress-slider').value;
+  NeuroSense.saveLog({ type: 'checkin', mood: selectedMood, stress: parseInt(stress), comfort: selectedComfort });
+  const streak = NeuroSense.updateStreak();
+  document.getElementById('streak-num').textContent = streak;
+  document.getElementById('sb-streak-badge').textContent = '🔥 ' + streak;
+  NeuroSense.addPoints(20);
+  toast('✓ Check-in saved! +20 pts');
+  drawCharts(); // refresh trend charts
+});
+
+// ── LOG TRIGGER ──
+function logTrigger() {
+  const title = document.getElementById('trig-title').value.trim();
+  if (!title) { toast('Please describe what happened'); return; }
+  NeuroSense.saveLog({
+    type:     'trigger',
+    title,
+    category: document.getElementById('trig-cat').value,
+    severity: parseInt(document.getElementById('sev-slider').value),
+    notes:    document.getElementById('trig-notes').value.trim()
+  });
+  document.getElementById('trig-title').value  = '';
+  document.getElementById('trig-notes').value  = '';
+  renderTriggerList();
+  toast('📔 Event logged');
+}
+
+// ── RENDER TRIGGER LIST ──
+function renderTriggerList() {
+  const logs = NeuroSense.getLogs('trigger').slice(0, 8);
+  const el   = document.getElementById('trigger-list');
+  if (!logs.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--t3);padding:20px;font-size:13px">No triggers logged yet.</div>';
+    return;
+  }
+  const catColor = { auditory:'coral', visual:'amber', tactile:'sage', social:'lavender', routine:'ocean', smell:'mint', other:'sage' };
+  el.innerHTML = logs.map(log => {
+    const sev   = log.severity || 5;
+    const dot   = sev >= 7 ? 'j-dot-hi' : sev >= 4 ? 'j-dot-me' : 'j-dot-lo';
+    const dstr  = new Date(log.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    const color = catColor[log.category] || 'sage';
+    return `<div class="j-entry">
+      <div class="j-dot ${dot}"></div>
+      <div>
+        <div class="j-time">${dstr} · Severity ${sev}/10</div>
+        <div class="j-title">${log.title}</div>
+        ${log.notes ? `<div class="j-note">${log.notes}</div>` : ''}
+        <div style="margin-top:8px"><span class="badge badge-${color}">${log.category || 'other'}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── LOG SLEEP ──
+function logSleep() {
+  const bedtime  = document.getElementById('bedtime').value;
+  const waketime = document.getElementById('waketime').value;
+  // Calculate hours
+  let hours = 0;
+  if (bedtime && waketime) {
+    const [bh, bm] = bedtime.split(':').map(Number);
+    const [wh, wm] = waketime.split(':').map(Number);
+    const totalMins = ((wh * 60 + wm) - (bh * 60 + bm) + 1440) % 1440;
+    hours = (totalMins / 60).toFixed(1);
+  }
+  NeuroSense.saveLog({
+    type:    'sleep',
+    bedtime, waketime, hours: parseFloat(hours),
+    quality: document.getElementById('sleep-quality').value,
+    appetite: document.getElementById('appetite').value
+  });
+  toast('😴 Sleep & appetite logged');
+  drawCharts();
+}
+
+// ── LOG MELTDOWN ──
+function logMeltdown() {
+  const trigger = document.getElementById('melt-trigger').value.trim();
+  NeuroSense.saveLog({
+    type:     'meltdown',
+    datetime: document.getElementById('melt-datetime').value,
+    duration: document.getElementById('melt-duration').value,
+    meltType: document.getElementById('melt-type').value,
+    trigger,
+    environment: document.getElementById('melt-env').value,
+    helped:   document.getElementById('melt-helped').value
+  });
+  document.getElementById('melt-trigger').value = '';
+  toast('⚡ Meltdown event logged');
+  renderMeltdownPatterns();
+}
+
+// ── MELTDOWN PATTERNS ──
+function renderMeltdownPatterns() {
+  const logs   = NeuroSense.getLogs('meltdown');
+  const patEl  = document.getElementById('meltdown-pattern');
+  const barsEl = document.getElementById('trigger-pattern-bars');
+  if (!logs.length) return;
+
+  // Day of week analysis
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dayCounts = Array(7).fill(0);
+  logs.forEach(l => { if (l.datetime) dayCounts[new Date(l.datetime).getDay()]++; });
+  const maxDay = dayCounts.indexOf(Math.max(...dayCounts));
+  if (dayCounts[maxDay] >= 2)
+    patEl.innerHTML = `⚡ <strong>Pattern detected:</strong> ${dayCounts[maxDay]} of recent meltdowns occurred on ${days[maxDay]}s. This may be a key transition trigger.`;
+
+  // Trigger frequency
+  const freq = {};
+  logs.forEach(l => { if (l.trigger) freq[l.trigger] = (freq[l.trigger] || 0) + 1; });
+  const sorted = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0,4);
+  const max = sorted[0]?.[1] || 1;
+  barsEl.innerHTML = sorted.map(([k,v]) => `
+    <div class="bench-bar">
+      <div class="bench-label">${k.slice(0,14)}</div>
+      <div class="bench-track"><div class="bench-fill-you" style="width:${(v/max*90).toFixed(0)}%"></div></div>
+      <div class="bench-val">${v}×</div>
+    </div>`).join('');
+}
+
+// ── TABS ──
+function switchTab(el, targetId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['t-journal','t-sleep','t-meltdown','t-trends'].forEach(id => {
+    document.getElementById(id).style.display = id === targetId ? 'block' : 'none';
+  });
+  if (targetId === 't-trends' || targetId === 't-sleep') drawCharts();
+  if (targetId === 't-meltdown') renderMeltdownPatterns();
+}
+
+// ── HEATMAP (from real logs) ──
+function buildHeatmap() {
+  const hm   = document.getElementById('heatmap');
+  const logs = NeuroSense.getLogs();
+  const now  = new Date();
+  // Last 84 days (12 weeks)
+  const cells = Array(84).fill(0);
+  logs.forEach(l => {
+    const diff = Math.floor((now - new Date(l.date)) / 86400000);
+    if (diff >= 0 && diff < 84) cells[83 - diff]++;
+  });
+  hm.innerHTML = cells.map(c => {
+    const lvl = c === 0 ? 0 : c === 1 ? 1 : c <= 3 ? 2 : c <= 5 ? 3 : 4;
+    return `<div class="hm-cell hm-${lvl}" title="${c} logs"></div>`;
+  }).join('');
+}
+
+// ── CHARTS ──
+function drawBar(id, labels, data, colors) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 300, H = canvas.offsetHeight || 160;
+  canvas.width = W; canvas.height = H;
+  const pad = {t:16,r:16,b:32,l:38};
+  const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+  const maxV = Math.max(...data, 1) * 1.15;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle = 'rgba(26,26,46,.05)'; ctx.lineWidth = 1;
+  for (let i=0;i<=4;i++) { const y = pad.t + ch*(1-i/4); ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+cw,y); ctx.stroke(); }
+  const bw = cw/data.length*.6, gap = cw/data.length;
+  data.forEach((v,i) => {
+    const x = pad.l + gap*i + (gap-bw)/2;
+    const bh = ch*(v/maxV), y = pad.t + ch - bh;
+    const grad = ctx.createLinearGradient(0,y,0,y+bh);
+    const c = colors[i % colors.length];
+    grad.addColorStop(0, c); grad.addColorStop(1, c.replace(')',', .45)').replace('rgb','rgba'));
+    ctx.beginPath(); ctx.roundRect(x,y,bw,bh,4); ctx.fillStyle = grad; ctx.fill();
+    ctx.fillStyle = 'rgba(144,144,176,.7)'; ctx.font = '10px Plus Jakarta Sans';
+    ctx.textAlign = 'center'; ctx.fillText(labels[i], x+bw/2, H-6);
+  });
+}
+
+function drawLine(id, labels, datasets, opts={}) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 400, H = canvas.offsetHeight || 220;
+  canvas.width = W; canvas.height = H;
+  const pad = {t:20,r:20,b:34,l:40};
+  const cw = W-pad.l-pad.r, ch = H-pad.t-pad.b;
+  const all = datasets.flatMap(d => d.data);
+  const minV = opts.min ?? Math.min(...all)*0.85;
+  const maxV = opts.max ?? Math.max(...all)*1.1;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='rgba(26,26,46,.05)'; ctx.lineWidth=1;
+  for (let i=0;i<=4;i++) { const y=pad.t+ch*(1-i/4); ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+cw,y); ctx.stroke(); }
+  ctx.fillStyle='rgba(144,144,176,.7)'; ctx.font='10px Plus Jakarta Sans'; ctx.textAlign='center';
+  labels.forEach((l,i) => { const x=pad.l+cw*i/(labels.length-1); ctx.fillText(l,x,H-6); });
+  datasets.forEach(ds => {
+    const pts = ds.data.map((v,i) => ({ x: pad.l+cw*i/(ds.data.length-1), y: pad.t+ch*(1-(v-minV)/(maxV-minV)) }));
+    const grad = ctx.createLinearGradient(0,pad.t,0,pad.t+ch);
+    grad.addColorStop(0, ds.color.replace(')',', .15)').replace('rgb','rgba'));
+    grad.addColorStop(1, ds.color.replace(')',', 0)').replace('rgb','rgba'));
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pad.t+ch);
+    pts.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(pts[pts.length-1].x, pad.t+ch); ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    pts.forEach(p => ctx.lineTo(p.x,p.y));
+    ctx.strokeStyle = ds.color; ctx.lineWidth=2.5; ctx.lineJoin='round'; ctx.stroke();
+    pts.forEach(p => { ctx.beginPath(); ctx.arc(p.x,p.y,3.5,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill(); ctx.strokeStyle=ds.color; ctx.lineWidth=2; ctx.stroke(); });
+  });
+}
+
+function drawDonut(id, data, colors) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth||300, H = canvas.offsetHeight||220;
+  canvas.width = W; canvas.height = H;
+  const cx=W/2, cy=H/2-10, r=Math.min(W,H)*0.32, ri=r*.55;
+  const total = data.reduce((a,b) => a+b, 0) || 1;
+  let start = -Math.PI/2;
+  data.forEach((v,i) => {
+    const angle = 2*Math.PI*v/total;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,start,start+angle); ctx.closePath();
+    ctx.fillStyle = colors[i]; ctx.fill();
+    start += angle;
+  });
+  ctx.beginPath(); ctx.arc(cx,cy,ri,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+  ctx.fillStyle='rgba(26,26,46,.7)'; ctx.font='bold 13px Lora'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('Mood', cx, cy);
+  // Legend
+  const labels = ['Distressed','Anxious','Neutral','Good','Great'];
+  const legX = 8, legY = H - 52;
+  labels.forEach((l,i) => {
+    ctx.fillStyle = colors[i]; ctx.fillRect(legX + (i%3)*80, legY + Math.floor(i/3)*16, 10, 10);
+    ctx.fillStyle = 'rgba(144,144,176,.8)'; ctx.font = '9px Plus Jakarta Sans'; ctx.textAlign='left';
+    ctx.fillText(l, legX + (i%3)*80 + 13, legY + Math.floor(i/3)*16 + 8);
+  });
+}
+
+function drawCharts() {
+  requestAnimationFrame(() => {
+    const sage='rgb(109,184,154)', coral='rgb(232,130,109)', lav='rgb(155,142,196)', ocean='rgb(46,109,164)', amb='rgb(212,168,83)';
+
+    // Sleep — from real logs or fallback
+    const sleepLogs = NeuroSense.getLogs('sleep').slice(0,7).reverse();
+    const sleepData  = sleepLogs.length ? sleepLogs.map(l => l.hours||7) : [6.5,7,8,6,7.5,9,8];
+    const sleepLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    drawBar('c-sleep', sleepLabels, sleepData, [sage]);
+
+    // Sleep avg
+    if (sleepData.length) {
+      const avg = (sleepData.reduce((a,b)=>a+b,0)/sleepData.length).toFixed(1);
+      document.getElementById('sleep-avg').textContent = avg + 'h';
+    }
+
+    // Appetite fallback
+    drawBar('c-appetite', ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], [80,55,90,60,85,95,88],
+      [sage,coral,sage,coral,sage,sage,sage]);
+
+    // Meltdown bars
+    drawBar('c-meltdown', ['W1','W2','W3','W4'],
+      [5,4,3,NeuroSense.getLogs('meltdown').length || 2],
+      [coral,amb,amb,sage]);
+
+    // Stress trend — from real checkin logs
+    const checkins = NeuroSense.getLogs('checkin').slice(0,8).reverse();
+    const stressData   = checkins.length ? checkins.map(l => l.stress||5) : [7.2,6.8,7.1,6.5,6.0,5.8,5.4,5.1];
+    const stressLabels = checkins.length ? checkins.map((_,i) => 'D'+(i+1)) : ['W1','W2','W3','W4','W5','W6','W7','W8'];
+    drawLine('c-stress-trend', stressLabels, [{data:stressData, color:sage}], {min:0,max:10});
+
+    // Mood donut — from real logs
+    const moodLogs = NeuroSense.getLogs('checkin');
+    const moodCounts = {very_distressed:0, anxious:0, neutral:0, good:0, great:0};
+    moodLogs.forEach(l => { if (moodCounts[l.mood] !== undefined) moodCounts[l.mood]++; });
+    const moodData = Object.values(moodCounts).some(v=>v>0)
+      ? Object.values(moodCounts)
+      : [3,4,8,10,5]; // fallback preview
+    drawDonut('c-mood', moodData, [coral,'rgb(232,180,100)',amb,sage,ocean]);
+
+    buildHeatmap();
+  });
+}
+
+// ── EXPORT ──
+function exportLogs() {
+  const logs = NeuroSense.getLogs();
+  const blob = new Blob([JSON.stringify(logs, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'neurosense-logs.json';
+  a.click();
+}
+
+// ── TOAST ──
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(window._toast);
+  window._toast = setTimeout(() => t.style.display = 'none', 3200);
+}
+
+window.addEventListener('resize', drawCharts);
+</script>
+</body>
+</html>

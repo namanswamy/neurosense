@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community — NeuroSense</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shared.css">
+</head>
+<body>
+<div class="mesh"></div>
+<div class="blob b1"></div>
+<div class="blob b2"></div>
+
+<div class="app">
+
+<!-- ════════ SIDEBAR ════════ -->
+<aside class="sb">
+  <div class="sbl">
+    <div class="sbli">🧠</div>
+    <div class="sblt">Neuro<span>Sense</span></div>
+  </div>
+  <div class="sb-sect">Core</div>
+  <a class="nav-item" href="../index.html" data-page="index.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Overview
+  </a>
+  <a class="nav-item" href="daily.html" data-page="daily.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Daily Insights
+    <span class="nav-badge nb-new">New</span>
+  </a>
+  <a class="nav-item" href="analytics.html" data-page="analytics.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Analytics
+  </a>
+  <div class="sb-sect">Clinical</div>
+  <a class="nav-item" href="therapist.html" data-page="therapist.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Therapist Portal
+  </a>
+  <a class="nav-item" href="action-plan.html" data-page="action-plan.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    Action Plan
+    <span class="nav-badge nb-streak" id="sb-streak-badge">🔥 0</span>
+  </a>
+  <div class="sb-sect">Community</div>
+  <a class="nav-item active" href="community.html" data-page="community.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+    Community
+  </a>
+  <div class="sbf">
+    <div class="streak-bar"><span class="streak-flame">🔥</span><span id="sb-streak-count">—</span></div>
+    <div class="user-card" style="margin-top:8px">
+      <div class="user-av" id="sb-user-av">--</div>
+      <div>
+        <div class="user-name" id="sb-user-name">Loading...</div>
+        <div class="user-role" id="sb-user-role">Parent</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ════════ MAIN ════════ -->
+<main class="mn">
+  <div class="ph">
+    <div class="ph-l"><h1>Community</h1><p>A safe, moderated space for families and individuals</p></div>
+    <div class="ph-r"><button class="btn btn-p btn-sm" onclick="openNewPost()">✏️ New Post</button></div>
+  </div>
+
+  <div class="disc">🛡️ This is a moderated, anonymous community. Real names are never shown. Posts are reviewed by clinical moderators. If you're in crisis, please contact a professional immediately.</div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(this,'c-forum')">💬 Forum</div>
+    <div class="tab" onclick="switchTab(this,'c-groups')">👥 Support Groups</div>
+    <div class="tab" onclick="switchTab(this,'c-qa')">🎓 Expert Q&A</div>
+    <div class="tab" onclick="switchTab(this,'c-stories')">💚 Success Stories</div>
+  </div>
+
+  <!-- ════ FORUM ════ -->
+  <div id="c-forum">
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <input type="text" id="forum-search" placeholder="Search forum..." oninput="filterPosts(this.value)"
+        style="flex:1;padding:10px 14px;border:1.5px solid var(--bd);border-radius:var(--r2);background:var(--bg2);font-family:var(--fb);font-size:13px;outline:none;color:var(--t1)">
+      <select id="forum-cat" onchange="filterPosts()"
+        style="padding:10px 14px;border:1.5px solid var(--bd);border-radius:var(--r2);background:var(--bg2);font-family:var(--fb);font-size:13px;color:var(--t2);outline:none">
+        <option value="">All Categories</option>
+        <option value="auditory">Auditory Sensitivity</option>
+        <option value="school">School Support</option>
+        <option value="meltdown">Meltdowns</option>
+        <option value="therapy">Therapy Tips</option>
+        <option value="caregiver">Caregiver Wellbeing</option>
+      </select>
+    </div>
+    <div id="forum-posts"></div>
+  </div>
+
+  <!-- ════ SUPPORT GROUPS ════ -->
+  <div id="c-groups" style="display:none">
+    <div class="notif notif-sage">💡 Groups are hosted on secure video platforms. Your identity remains anonymous unless you choose to share.</div>
+    <div class="sg-card">
+      <div class="sg-icon" style="background:var(--sagel)">👪</div>
+      <div class="sg-info">
+        <div class="sg-name">Parents of Children with Moderate Sensory Profiles</div>
+        <div class="sg-meta">Every Tuesday · 7:00 PM IST · Facilitated by a trained peer counselor</div>
+      </div>
+      <div style="font-size:12px;font-weight:600;margin-left:auto;color:var(--sage)">4 spots left</div>
+      <button class="btn btn-p btn-sm" onclick="joinGroup(this,'Tuesday group')">Join</button>
+    </div>
+    <div class="sg-card">
+      <div class="sg-icon" style="background:var(--oceanl)">🧑‍🤝‍🧑</div>
+      <div class="sg-info">
+        <div class="sg-name">Adult Self-Advocates — Late Diagnosis Network</div>
+        <div class="sg-meta">Every Thursday · 8:00 PM IST · Open format discussion</div>
+      </div>
+      <div style="font-size:12px;font-weight:600;margin-left:auto;color:var(--ocean)">8 spots left</div>
+      <button class="btn btn-sm" onclick="joinGroup(this,'Thursday group')">Join</button>
+    </div>
+    <div class="sg-card">
+      <div class="sg-icon" style="background:var(--laverl)">🎓</div>
+      <div class="sg-info">
+        <div class="sg-name">School Support Strategies — For Parents</div>
+        <div class="sg-meta">Bi-weekly Saturday · 10:00 AM IST · Expert-led workshop</div>
+      </div>
+      <div style="font-size:12px;font-weight:600;margin-left:auto;color:var(--amber)">2 spots left</div>
+      <button class="btn btn-sm" onclick="toast('⚠️ Added to waitlist')">Join Waitlist</button>
+    </div>
+    <div class="sg-card" style="opacity:.6">
+      <div class="sg-icon" style="background:var(--corall)">💆</div>
+      <div class="sg-info">
+        <div class="sg-name">Caregiver Wellbeing Circle</div>
+        <div class="sg-meta">Every Sunday · 9:00 AM IST · For parents and caregivers</div>
+      </div>
+      <div style="font-size:12px;font-weight:600;margin-left:auto;color:var(--coral)">Full</div>
+      <button class="btn btn-sm" disabled>Full</button>
+    </div>
+  </div>
+
+  <!-- ════ EXPERT Q&A ════ -->
+  <div id="c-qa" style="display:none">
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <input type="text" id="qa-input" placeholder="Ask a question anonymously..."
+        style="flex:1;padding:10px 14px;border:1.5px solid var(--bd);border-radius:var(--r2);background:var(--bg2);font-family:var(--fb);font-size:13px;outline:none;color:var(--t1)">
+      <button class="btn btn-p btn-sm" onclick="submitQuestion()">Submit</button>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q"><span class="qa-q-badge">Q</span><span>My 9-year-old has an auditory score of 8.6 on NeuroSense. What accommodations should I request at school?</span></div>
+      <div class="qa-a">Request preferential seating away from high-noise areas (doors, HVAC, hallways). Ask for written instructions alongside verbal ones. Noise-canceling headphones should be on the IEP as a permitted accommodation. A quiet workspace for tests and focused work is also your right to request under Section 504.</div>
+      <div class="qa-expert"><div class="qa-expert-dot"></div><strong>Dr. Priya Nair</strong>, Pediatric OT · 12 years experience &nbsp;·&nbsp; Answered Nov 16</div>
+    </div>
+    <div class="qa-item">
+      <div class="qa-q"><span class="qa-q-badge">Q</span><span>How long does it typically take to see improvement with a sensory diet?</span></div>
+      <div class="qa-a">Most families see meaningful changes within 4–8 weeks of consistent implementation. Sensory diets work on the nervous system's neuroplasticity — daily, repeated input gradually shifts tolerance thresholds. Consistency matters more than perfection.</div>
+      <div class="qa-expert"><div class="qa-expert-dot"></div><strong>Dr. Vikram Singh</strong>, Developmental Pediatrician &nbsp;·&nbsp; Answered Nov 14</div>
+    </div>
+    <div id="user-questions"></div>
+  </div>
+
+  <!-- ════ SUCCESS STORIES ════ -->
+  <div id="c-stories" style="display:none">
+    <div class="forum-post" style="border-color:rgba(109,184,154,.3);background:linear-gradient(135deg,rgba(109,184,154,.04),var(--bg2))">
+      <div style="font-size:28px;margin-bottom:10px">💚</div>
+      <div class="fp-title" style="font-family:var(--fd)">From meltdowns every day to only 2 this month</div>
+      <div class="fp-body">"When we started on NeuroSense 4 months ago, our son was having daily meltdowns at school. Today — after OT, the sensory diet, and your community advice — we're down to 2 this entire month. The trigger journal was the most valuable thing."</div>
+      <div style="font-size:12px;color:var(--t3);font-style:italic;margin-bottom:10px">— Parent, Delhi. Son: 8, Moderate profile. 4 months on NeuroSense.</div>
+      <div class="fp-actions"><div class="fp-action" onclick="likePost(this)">❤️ <span>93</span> found this helpful</div></div>
+    </div>
+    <div class="forum-post" style="border-color:rgba(155,142,196,.3);background:linear-gradient(135deg,rgba(155,142,196,.04),var(--bg2))">
+      <div style="font-size:28px;margin-bottom:10px">🎓</div>
+      <div class="fp-title" style="font-family:var(--fd)">Finally got an IEP after sharing the report</div>
+      <div class="fp-body">"I printed the NeuroSense detailed report and the therapist annotations together, and brought it to the school IEP meeting. For the first time, they took my son's needs seriously."</div>
+      <div style="font-size:12px;color:var(--t3);font-style:italic;margin-bottom:10px">— Parent, Bangalore. Son: 11, High profile.</div>
+      <div class="fp-actions"><div class="fp-action" onclick="likePost(this)">❤️ <span>47</span> found this helpful</div></div>
+    </div>
+  </div>
+</main>
+</div>
+
+<div id="toast"></div>
+
+<!-- New Post Modal -->
+<div id="modal" style="display:none;position:fixed;inset:0;background:rgba(26,26,46,.4);backdrop-filter:blur(8px);z-index:999;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border-radius:var(--r3);padding:32px;max-width:520px;width:90%;box-shadow:var(--sh3)">
+    <div style="font-family:var(--fd);font-size:20px;font-weight:600;margin-bottom:20px">New Anonymous Post</div>
+    <div class="fg"><label>Title</label><input type="text" id="post-title" placeholder="What would you like to share?"></div>
+    <div class="fg"><label>Category</label>
+      <select id="post-cat"><option value="auditory">Auditory Sensitivity</option><option value="school">School Support</option><option value="meltdown">Meltdowns</option><option value="therapy">Therapy Tips</option><option value="caregiver">Caregiver Wellbeing</option></select>
+    </div>
+    <div class="fg"><label>Your post</label><textarea id="post-body" placeholder="Share your experience, question, or tip..." style="min-height:120px"></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+      <button class="btn btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-p btn-sm" onclick="submitPost()">Post Anonymously</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/neurosense.js"></script>
+<script>
+// ── Sample posts data ──
+const SAMPLE_POSTS = [
+  { av:'PM', avColor:'linear-gradient(135deg,var(--sage),#7bcfb0)', user:'Parent of 7-year-old (Moderate profile)',
+    time:'2h ago', title:'Finally found headphones that actually work for auditory sensitivity! 🎧',
+    body:'After trying 6 different brands, the Loop Engage Plus have been life-changing for our son at school. The 16dB reduction is enough to take the edge off without complete isolation.',
+    tags:['auditory','school'], likes:24, replies:11, category:'auditory' },
+  { av:'CA', avColor:'linear-gradient(135deg,var(--ocean),#3d8bc4)', user:'Caregiver · High sensory profile',
+    time:'5h ago', title:'Does anyone else\'s child refuse haircuts completely?',
+    body:'We\'ve tried everything — clippers, scissors, distraction. It always ends in a meltdown. Any OT strategies that have worked for you?',
+    tags:['meltdown'], likes:8, replies:19, category:'meltdown' },
+  { av:'SA', avColor:'linear-gradient(135deg,var(--lavender),#b8aad8)', user:'Self-advocate · Adult, diagnosed at 28',
+    time:'1d ago', title:'Late diagnosis changed my life — you\'re not alone',
+    body:'I spent 28 years thinking I was "too sensitive" or "difficult." Getting my assessment score and finally having a framework for my experience has been transformative.',
+    tags:['caregiver','school'], likes:61, replies:34, category:'caregiver' },
+];
+
+let allPosts = [...SAMPLE_POSTS];
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (!NeuroSense.requireAuth()) return;
+  NeuroSense.initSidebar();
+  document.getElementById('sb-streak-badge').textContent = '🔥 ' + NeuroSense.getStreak();
+
+  // Load user-submitted posts from localStorage
+  const saved = JSON.parse(localStorage.getItem('ns_forum_posts') || '[]');
+  allPosts = [...saved, ...SAMPLE_POSTS];
+  renderPosts(allPosts);
+});
+
+function renderPosts(posts) {
+  const badgeColors = { auditory:'coral', school:'ocean', meltdown:'amber', therapy:'sage', caregiver:'lavender' };
+  document.getElementById('forum-posts').innerHTML = posts.map((p,i) => `
+    <div class="forum-post" data-category="${p.category}">
+      <div class="fp-header">
+        <div class="fp-av" style="background:${p.avColor}">${p.av}</div>
+        <div><div class="fp-user">${p.user}</div></div>
+        <div class="fp-time">${p.time}</div>
+      </div>
+      <div class="fp-title">${p.title}</div>
+      <div class="fp-body">${p.body}</div>
+      <div style="margin-bottom:10px">${(p.tags||[]).map(t=>`<span class="badge badge-${badgeColors[t]||'sage'}">${t}</span> `).join('')}</div>
+      <div class="fp-actions">
+        <div class="fp-action" onclick="likePost(this)">❤️ <span>${p.likes}</span> helpful</div>
+        <div class="fp-action">💬 ${p.replies} replies</div>
+        <div class="fp-action">🔖 Save</div>
+      </div>
+    </div>`).join('');
+}
+
+function filterPosts() {
+  const q   = document.getElementById('forum-search').value.toLowerCase();
+  const cat = document.getElementById('forum-cat').value;
+  const filtered = allPosts.filter(p => {
+    const matchQ   = !q || p.title.toLowerCase().includes(q) || p.body.toLowerCase().includes(q);
+    const matchCat = !cat || p.category === cat;
+    return matchQ && matchCat;
+  });
+  renderPosts(filtered);
+}
+
+function likePost(el) {
+  const span = el.querySelector('span');
+  span.textContent = parseInt(span.textContent) + 1;
+  el.style.color = 'var(--coral)';
+  toast('❤️ Marked as helpful');
+}
+
+function joinGroup(btn, name) {
+  btn.textContent = '✓ Joined';
+  btn.disabled = true;
+  btn.style.background = 'var(--sage)';
+  toast('✅ You joined the ' + name);
+}
+
+function submitQuestion() {
+  const q = document.getElementById('qa-input').value.trim();
+  if (!q) return;
+  const el = document.getElementById('user-questions');
+  el.innerHTML = `<div class="qa-item">
+    <div class="qa-q"><span class="qa-q-badge">Q</span><span>${q}</span></div>
+    <div class="qa-a" style="color:var(--t3);font-style:italic">Your question has been submitted for expert review. Typically answered within 24–48 hours.</div>
+  </div>` + el.innerHTML;
+  document.getElementById('qa-input').value = '';
+  toast('❓ Question submitted for expert review');
+}
+
+function openNewPost() { document.getElementById('modal').style.display = 'flex'; }
+function closeModal()  { document.getElementById('modal').style.display = 'none'; }
+
+function submitPost() {
+  const title = document.getElementById('post-title').value.trim();
+  const body  = document.getElementById('post-body').value.trim();
+  const cat   = document.getElementById('post-cat').value;
+  if (!title || !body) { toast('Please fill in both title and body'); return; }
+  const user = NeuroSense.getUser();
+  const newPost = {
+    av: (user?.name||'AN').slice(0,2).toUpperCase(),
+    avColor: 'linear-gradient(135deg,var(--mint),#6edbb8)',
+    user: 'Anonymous member',
+    time: 'Just now', title, body, tags:[cat], likes:0, replies:0, category: cat
+  };
+  // Save to localStorage
+  const saved = JSON.parse(localStorage.getItem('ns_forum_posts')||'[]');
+  saved.unshift(newPost);
+  localStorage.setItem('ns_forum_posts', JSON.stringify(saved));
+  allPosts.unshift(newPost);
+  renderPosts(allPosts);
+  closeModal();
+  document.getElementById('post-title').value = '';
+  document.getElementById('post-body').value  = '';
+  toast('✅ Post submitted for moderation');
+}
+
+function switchTab(el, targetId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['c-forum','c-groups','c-qa','c-stories'].forEach(id => {
+    document.getElementById(id).style.display = id === targetId ? 'block' : 'none';
+  });
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(window._toast);
+  window._toast = setTimeout(() => t.style.display = 'none', 3200);
+}
+</script>
+</body>
+</html>

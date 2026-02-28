@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Action Plan — NeuroSense</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shared.css">
+</head>
+<body>
+<div class="mesh"></div>
+<div class="blob b1"></div>
+<div class="blob b2"></div>
+
+<div class="app">
+
+<!-- ════════ SIDEBAR ════════ -->
+<aside class="sb">
+  <div class="sbl">
+    <div class="sbli">🧠</div>
+    <div class="sblt">Neuro<span>Sense</span></div>
+  </div>
+  <div class="sb-sect">Core</div>
+  <a class="nav-item" href="../index.html" data-page="index.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Overview
+  </a>
+  <a class="nav-item" href="daily.html" data-page="daily.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Daily Insights
+    <span class="nav-badge nb-new">New</span>
+  </a>
+  <a class="nav-item" href="analytics.html" data-page="analytics.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Analytics
+  </a>
+  <div class="sb-sect">Clinical</div>
+  <a class="nav-item" href="therapist.html" data-page="therapist.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Therapist Portal
+  </a>
+  <a class="nav-item active" href="action-plan.html" data-page="action-plan.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    Action Plan
+    <span class="nav-badge nb-streak" id="sb-streak-badge">🔥 0</span>
+  </a>
+  <div class="sb-sect">Community</div>
+  <a class="nav-item" href="community.html" data-page="community.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+    Community
+  </a>
+  <div class="sbf">
+    <div class="streak-bar"><span class="streak-flame">🔥</span><span id="sb-streak-count">—</span></div>
+    <div class="user-card" style="margin-top:8px">
+      <div class="user-av" id="sb-user-av">--</div>
+      <div>
+        <div class="user-name" id="sb-user-name">Loading...</div>
+        <div class="user-role" id="sb-user-role">Parent</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ════════ MAIN ════════ -->
+<main class="mn">
+  <div class="ph">
+    <div class="ph-l"><h1>Sensory Action Plan</h1><p>Your personalized daily support routine</p></div>
+    <div class="ph-r">
+      <button class="btn btn-sm" onclick="printCards()">🖨️ Print Sensory Diet Cards</button>
+      <button class="btn btn-p btn-sm">✏️ Edit Plan</button>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="g4" style="margin-bottom:24px">
+    <div class="mc mc-amber">
+      <div class="mc-icon" style="background:var(--amberl)"><span class="streak-flame">🔥</span></div>
+      <div class="mc-val" id="stat-streak">0</div>
+      <div class="mc-lbl">Day Streak</div>
+    </div>
+    <div class="mc mc-sage">
+      <div class="mc-icon" style="background:var(--sagel)">⭐</div>
+      <div class="mc-val" id="stat-points">0</div>
+      <div class="mc-lbl">Points Earned</div>
+    </div>
+    <div class="mc mc-ocean">
+      <div class="mc-icon" style="background:var(--oceanl)">✅</div>
+      <div class="mc-val" id="stat-completion">0%</div>
+      <div class="mc-lbl">Today's Tasks</div>
+    </div>
+    <div class="mc mc-lavender">
+      <div class="mc-icon" style="background:var(--laverl)">🏆</div>
+      <div class="mc-val" id="stat-badges">0</div>
+      <div class="mc-lbl">Badges Earned</div>
+    </div>
+  </div>
+
+  <!-- Routine Cards -->
+  <div class="g3" style="margin-bottom:24px">
+
+    <!-- Morning -->
+    <div class="routine-card rc-morning">
+      <div class="rc-title">🌅 Morning Routine</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:14px">7:00 – 8:30 AM · Before school</div>
+      <div class="task-item"><div class="task-cb" id="t1" onclick="toggleTask('t1',10)"></div><div class="task-lbl">Deep pressure hug (3 min)</div><div class="task-pts">+10</div></div>
+      <div class="task-item"><div class="task-cb" id="t2" onclick="toggleTask('t2',15)"></div><div class="task-lbl">Proprioceptive exercises — wall push-ups</div><div class="task-pts">+15</div></div>
+      <div class="task-item"><div class="task-cb" id="t3" onclick="toggleTask('t3',10)"></div><div class="task-lbl">Weighted vest during breakfast (15 min)</div><div class="task-pts">+10</div></div>
+      <div class="task-item"><div class="task-cb" id="t4" onclick="toggleTask('t4',5)"></div><div class="task-lbl">Check school schedule — prepare for changes</div><div class="task-pts">+5</div></div>
+      <div class="task-item"><div class="task-cb" id="t5" onclick="toggleTask('t5',5)"></div><div class="task-lbl">Pack noise-canceling headphones</div><div class="task-pts">+5</div></div>
+    </div>
+
+    <!-- Afternoon -->
+    <div class="routine-card rc-afternoon">
+      <div class="rc-title">🌤️ After-School</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:14px">3:30 – 5:00 PM · Decompression</div>
+      <div class="task-item"><div class="task-cb" id="t6" onclick="toggleTask('t6',20)"></div><div class="task-lbl">30 min quiet decompression (dim room)</div><div class="task-pts">+20</div></div>
+      <div class="task-item"><div class="task-cb" id="t7" onclick="toggleTask('t7',10)"></div><div class="task-lbl">Sensory snack — crunchy textures preferred</div><div class="task-pts">+10</div></div>
+      <div class="task-item"><div class="task-cb" id="t8" onclick="toggleTask('t8',15)"></div><div class="task-lbl">Outdoor play — proprioceptive input</div><div class="task-pts">+15</div></div>
+      <div class="task-item"><div class="task-cb" id="t9" onclick="toggleTask('t9',20)"></div><div class="task-lbl">Therapeutic Listening — 30 min</div><div class="task-pts">+20</div></div>
+    </div>
+
+    <!-- Evening -->
+    <div class="routine-card rc-evening">
+      <div class="rc-title">🌙 Evening Wind-Down</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:14px">7:00 – 8:30 PM · Calm preparation</div>
+      <div class="task-item"><div class="task-cb" id="t10" onclick="toggleTask('t10',10)"></div><div class="task-lbl">Warm bath (sensory input + calming)</div><div class="task-pts">+10</div></div>
+      <div class="task-item"><div class="task-cb" id="t11" onclick="toggleTask('t11',5)"></div><div class="task-lbl">Dim lights 1 hour before bedtime</div><div class="task-pts">+5</div></div>
+      <div class="task-item"><div class="task-cb" id="t12" onclick="toggleTask('t12',10)"></div><div class="task-lbl">Weighted blanket during bedtime routine</div><div class="task-pts">+10</div></div>
+      <div class="task-item"><div class="task-cb" id="t13" onclick="toggleTask('t13',5)"></div><div class="task-lbl">Read tomorrow's schedule together</div><div class="task-pts">+5</div></div>
+      <div class="task-item"><div class="task-cb" id="t14" onclick="toggleTask('t14',15)"></div><div class="task-lbl">Log today's check-in in NeuroSense</div><div class="task-pts">+15</div></div>
+    </div>
+  </div>
+
+  <!-- Achievements -->
+  <div class="card">
+    <div class="ch"><div><div class="ct">Achievement Badges</div><div class="cs">Your milestones</div></div></div>
+    <div id="badges-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px"></div>
+  </div>
+</main>
+</div>
+
+<div id="toast"></div>
+
+<script src="../js/neurosense.js"></script>
+<script>
+const TASK_IDS = ['t1','t2','t3','t4','t5','t6','t7','t8','t9','t10','t11','t12','t13','t14'];
+const TOTAL_TASKS = TASK_IDS.length;
+
+const BADGES_DEF = [
+  { id:'first_flame',  icon:'🔥', name:'First Flame',  desc:'7-day streak',           condition: s => s.streak >= 7 },
+  { id:'sprout',       icon:'🌱', name:'Sprout',        desc:'First week complete',    condition: s => s.streak >= 7 },
+  { id:'journal_star', icon:'📔', name:'Journal Star',  desc:'10 logs recorded',       condition: s => s.logs >= 10 },
+  { id:'calm_keeper',  icon:'💆', name:'Calm Keeper',   desc:'3 days low stress',      condition: s => s.points >= 100 },
+  { id:'hero_30',      icon:'🏅', name:'30-Day Hero',   desc:'30-day streak',          condition: s => s.streak >= 30 },
+  { id:'full_plan',    icon:'🧩', name:'Full Plan',     desc:'100% tasks 5 days',      condition: s => s.fullDays >= 5 },
+];
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (!NeuroSense.requireAuth()) return;
+  NeuroSense.initSidebar();
+
+  const streak = NeuroSense.getStreak();
+  const points = NeuroSense.getPoints();
+  document.getElementById('sb-streak-badge').textContent = '🔥 ' + streak;
+  document.getElementById('stat-streak').textContent = streak;
+  document.getElementById('stat-points').textContent = points;
+
+  // Restore task states from today
+  restoreTaskStates();
+  updateCompletion();
+  renderBadges();
+});
+
+function restoreTaskStates() {
+  const tasks = NeuroSense.getTasks();
+  const today = new Date().toDateString();
+  TASK_IDS.forEach(id => {
+    const t = tasks[id];
+    if (t && t.done && new Date(t.date).toDateString() === today) {
+      const cb = document.getElementById(id);
+      if (cb) { cb.classList.add('done'); cb.textContent = '✓'; }
+    }
+  });
+}
+
+function toggleTask(id, pts) {
+  const cb = document.getElementById(id);
+  cb.classList.toggle('done');
+  const done = cb.classList.contains('done');
+  cb.textContent = done ? '✓' : '';
+  NeuroSense.setTask(id, done);
+  if (done) {
+    const total = NeuroSense.addPoints(pts);
+    document.getElementById('stat-points').textContent = total;
+    toast('+' + pts + ' pts earned! ⭐');
+  }
+  updateCompletion();
+  renderBadges();
+}
+
+function updateCompletion() {
+  const done = TASK_IDS.filter(id => document.getElementById(id)?.classList.contains('done')).length;
+  const pct  = Math.round(done / TOTAL_TASKS * 100);
+  document.getElementById('stat-completion').textContent = pct + '%';
+}
+
+function renderBadges() {
+  const streak = NeuroSense.getStreak();
+  const points = NeuroSense.getPoints();
+  const logs   = NeuroSense.getLogs().length;
+  const state  = { streak, points, logs, fullDays: 0 };
+
+  const unlocked = BADGES_DEF.filter(b => b.condition(state));
+  document.getElementById('stat-badges').textContent = unlocked.length;
+
+  document.getElementById('badges-grid').innerHTML = BADGES_DEF.map(b => {
+    const ok = b.condition(state);
+    return `<div class="achievement ${ok ? 'unlocked' : 'locked'}">
+      <div class="ach-icon" style="background:${ok?'var(--amberl)':'var(--bg4)'}">${b.icon}</div>
+      <div class="ach-name">${b.name}</div>
+      <div class="ach-desc">${b.desc}</div>
+    </div>`;
+  }).join('');
+}
+
+function printCards() {
+  window.print();
+  toast('🖨️ Opening print dialog...');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(window._toast);
+  window._toast = setTimeout(() => t.style.display = 'none', 3000);
+}
+</script>
+</body>
+</html>

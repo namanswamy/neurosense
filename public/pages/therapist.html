@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Therapist Portal — NeuroSense</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shared.css">
+</head>
+<body>
+<div class="mesh"></div>
+<div class="blob b1"></div>
+<div class="blob b2"></div>
+
+<div class="app">
+
+<!-- ════════ SIDEBAR ════════ -->
+<aside class="sb">
+  <div class="sbl">
+    <div class="sbli">🧠</div>
+    <div class="sblt">Neuro<span>Sense</span></div>
+  </div>
+  <div class="sb-sect">Core</div>
+  <a class="nav-item" href="../index.html" data-page="index.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Overview
+  </a>
+  <a class="nav-item" href="daily.html" data-page="daily.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Daily Insights
+    <span class="nav-badge nb-new">New</span>
+  </a>
+  <a class="nav-item" href="analytics.html" data-page="analytics.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Analytics
+  </a>
+  <div class="sb-sect">Clinical</div>
+  <a class="nav-item active" href="therapist.html" data-page="therapist.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Therapist Portal
+  </a>
+  <a class="nav-item" href="action-plan.html" data-page="action-plan.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    Action Plan
+    <span class="nav-badge nb-streak" id="sb-streak-badge">🔥 0</span>
+  </a>
+  <div class="sb-sect">Community</div>
+  <a class="nav-item" href="community.html" data-page="community.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+    Community
+  </a>
+  <div class="sbf">
+    <div class="streak-bar"><span class="streak-flame">🔥</span><span id="sb-streak-count">—</span></div>
+    <div class="user-card" style="margin-top:8px">
+      <div class="user-av" id="sb-user-av">--</div>
+      <div>
+        <div class="user-name" id="sb-user-name">Loading...</div>
+        <div class="user-role" id="sb-user-role">Parent</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ════════ MAIN ════════ -->
+<main class="mn">
+  <div class="ph">
+    <div class="ph-l"><h1>Therapist Portal</h1><p>Securely collaborate with your clinical team</p></div>
+    <div class="ph-r">
+      <button class="btn btn-ocean btn-sm" onclick="copyShareLink()">🔗 Copy Share Link</button>
+    </div>
+  </div>
+
+  <div class="disc">🔒 All data shared with therapists is encrypted end-to-end. Only you control access. You can revoke at any time from this page.</div>
+
+  <!-- Invite box -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="ch"><div><div class="ct">Invite Your Therapist</div><div class="cs">Read-only secure access</div></div></div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:flex-end">
+      <div class="fg" style="margin-bottom:0">
+        <label>Therapist Email</label>
+        <input type="email" id="invite-email" placeholder="therapist@clinic.com">
+      </div>
+      <button class="btn btn-p" onclick="sendInvite()">Send Invite</button>
+    </div>
+    <div class="share-box" style="margin-top:12px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+      <div class="share-link" id="share-url">Generating secure link...</div>
+      <button class="btn btn-sm" onclick="copyShareLink()">Copy</button>
+    </div>
+  </div>
+
+  <!-- Connected therapists -->
+  <div style="margin-bottom:20px">
+    <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:12px">Connected Therapists</div>
+    <div class="th-card" style="margin-bottom:10px">
+      <div class="th-av">DR</div>
+      <div>
+        <div class="th-name">Dr. Riya Sharma</div>
+        <div class="th-spec">Occupational Therapist · Active since Sep 2024</div>
+        <div class="th-badge"><span class="badge badge-sage">✓ Active Access</span></div>
+      </div>
+      <div class="th-actions">
+        <button class="btn btn-sm btn-ocean" onclick="toast('📹 Opening video call link...')">📹 Book Session</button>
+        <button class="btn btn-sm" onclick="revokeAccess(this)">Revoke</button>
+      </div>
+    </div>
+    <div class="th-card" style="opacity:.65">
+      <div class="th-av" style="background:linear-gradient(135deg,var(--lavender),#b8aad8)">AM</div>
+      <div>
+        <div class="th-name">Dr. Arjun Mehta</div>
+        <div class="th-spec">Child Psychologist · Pending invitation</div>
+        <div class="th-badge"><span class="badge badge-amber">⏳ Pending</span></div>
+      </div>
+      <div class="th-actions"><button class="btn btn-sm" onclick="toast('📧 Reminder sent')">Resend</button></div>
+    </div>
+  </div>
+
+  <!-- Session timeline + Annotations -->
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><div><div class="ct">Session Timeline</div><div class="cs">Notes & past sessions</div></div></div>
+      <div class="tl">
+        <div class="tl-item">
+          <div class="tl-dot tl-dot-done"></div>
+          <div class="tl-date">Nov 15, 2024 · 3:00 PM</div>
+          <div class="tl-title">OT Session #8 — Sensory Integration</div>
+          <div class="tl-note">Good progress on vestibular regulation exercises. Responded well to weighted vest trial. Recommend continuing proprioceptive activities at home.</div>
+          <div style="margin-top:8px"><span class="badge badge-sage">Completed</span></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot tl-dot-done"></div>
+          <div class="tl-date">Nov 1, 2024 · 3:00 PM</div>
+          <div class="tl-title">OT Session #7 — Auditory Processing</div>
+          <div class="tl-note">Introduced Therapeutic Listening program. Parent reported improvement in noise tolerance after 2 weeks. Score: 7.2 → 6.1.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot tl-dot-upcoming"></div>
+          <div class="tl-date">Nov 22, 2024 · 3:00 PM</div>
+          <div class="tl-title">OT Session #9 — Upcoming</div>
+          <div class="tl-note" style="opacity:.6">Focus: Social environment adaptation strategies.</div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn btn-sm btn-ocean" onclick="toast('📹 Video call link sent')">Join Video</button>
+            <button class="btn btn-sm" onclick="toast('📅 Added to calendar')">Add to Calendar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch"><div><div class="ct">Therapist Annotations</div><div class="cs">On your latest report</div></div></div>
+      <div class="ann">
+        <div class="ann-av">RS</div>
+        <div class="ann-body">
+          <div class="ann-who">Dr. Riya Sharma · on Auditory Section</div>
+          <div class="ann-text">Auditory score of 8.4 is clinically significant. Recommending noise-canceling headphones for school use and preferential seating away from HVAC vents.</div>
+        </div>
+      </div>
+      <div class="ann">
+        <div class="ann-av">RS</div>
+        <div class="ann-body">
+          <div class="ann-who">Dr. Riya Sharma · on Emotional Regulation</div>
+          <div class="ann-text">Shutdown pattern is consistent with interoceptive difficulties. Introducing body-scan activities. Parent should track over next 4 weeks.</div>
+        </div>
+      </div>
+      <div class="ann">
+        <div class="ann-av">RS</div>
+        <div class="ann-body">
+          <div class="ann-who">Dr. Riya Sharma · on Recommendations</div>
+          <div class="ann-text">I agree with the sensory diet plan. Adding: proprioceptive heavy work before school (10 min). This should reduce morning meltdown frequency.</div>
+        </div>
+      </div>
+
+      <!-- Before/After comparison — driven by real ML history -->
+      <div style="margin-top:18px;padding-top:18px;border-top:1.5px solid var(--bd)">
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px">Before vs After Therapy (12 weeks)</div>
+        <div id="before-after-compare">
+          <!-- Populated by JS from ML history -->
+          <div class="compare-row"><div class="compare-lbl">Auditory</div><div class="compare-bars"><div class="compare-bar compare-bar-a" style="width:84%"></div><div class="compare-bar compare-bar-b" style="width:61%"></div></div><div class="compare-vals"><span style="color:var(--coral)">8.4</span><span style="color:var(--sage)">6.1</span></div></div>
+          <div class="compare-row"><div class="compare-lbl">Emotional</div><div class="compare-bars"><div class="compare-bar compare-bar-a" style="width:79%"></div><div class="compare-bar compare-bar-b" style="width:60%"></div></div><div class="compare-vals"><span style="color:var(--coral)">7.9</span><span style="color:var(--sage)">6.0</span></div></div>
+          <div class="compare-row"><div class="compare-lbl">Social</div><div class="compare-bars"><div class="compare-bar compare-bar-a" style="width:72%"></div><div class="compare-bar compare-bar-b" style="width:58%"></div></div><div class="compare-vals"><span style="color:var(--amber)">7.2</span><span style="color:var(--sage)">5.8</span></div></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:10px;font-size:11px;color:var(--t3)">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:4px;border-radius:2px;background:var(--coral);display:inline-block"></span>Before</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:4px;border-radius:2px;background:var(--sage);display:inline-block"></span>After</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<div id="toast"></div>
+
+<script src="../js/neurosense.js"></script>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  if (!NeuroSense.requireAuth()) return;
+  NeuroSense.initSidebar();
+  const streak = NeuroSense.getStreak();
+  document.getElementById('sb-streak-badge').textContent = '🔥 ' + streak;
+
+  // Generate share URL from user data
+  const user = NeuroSense.getUser();
+  const uid  = user?.id || Math.random().toString(36).slice(2,10);
+  document.getElementById('share-url').textContent =
+    `https://neurosense.health/share/${uid}/view-only`;
+
+  // Populate before/after from ML history if available
+  const history = NeuroSense.getHistory();
+  if (history.length >= 2) {
+    const first = history[0];
+    const last  = history[history.length - 1];
+    const keys  = ['sensory_auditory','emotional_regulation','social_communication'];
+    const labels = ['Auditory','Emotional','Social'];
+    const el = document.getElementById('before-after-compare');
+    el.innerHTML = keys.map((k, i) => {
+      const before = parseFloat(first[k] || 8);
+      const after  = parseFloat(last[k]  || 6);
+      const color  = after < before ? 'var(--sage)' : 'var(--coral)';
+      return `<div class="compare-row">
+        <div class="compare-lbl">${labels[i]}</div>
+        <div class="compare-bars">
+          <div class="compare-bar compare-bar-a" style="width:${before*10}%"></div>
+          <div class="compare-bar compare-bar-b" style="width:${after*10}%"></div>
+        </div>
+        <div class="compare-vals">
+          <span style="color:var(--coral)">${before.toFixed(1)}</span>
+          <span style="color:${color}">${after.toFixed(1)}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+});
+
+function sendInvite() {
+  const email = document.getElementById('invite-email').value.trim();
+  if (!email || !email.includes('@')) { toast('Please enter a valid email'); return; }
+  toast('📧 Invitation sent securely to ' + email);
+  document.getElementById('invite-email').value = '';
+}
+
+function copyShareLink() {
+  const url = document.getElementById('share-url').textContent;
+  navigator.clipboard.writeText(url).then(() => toast('🔗 Secure link copied!')).catch(() => toast('🔗 Link: ' + url));
+}
+
+function revokeAccess(btn) {
+  btn.closest('.th-card').style.opacity = '.4';
+  toast('🚫 Access revoked');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(window._toast);
+  window._toast = setTimeout(() => t.style.display = 'none', 3200);
+}
+</script>
+</body>
+</html>

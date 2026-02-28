@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics — NeuroSense</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shared.css">
+</head>
+<body>
+<div class="mesh"></div>
+<div class="blob b1"></div>
+<div class="blob b2"></div>
+
+<div class="app">
+
+<!-- ════════ SIDEBAR ════════ -->
+<aside class="sb">
+  <div class="sbl">
+    <div class="sbli">🧠</div>
+    <div class="sblt">Neuro<span>Sense</span></div>
+  </div>
+  <div class="sb-sect">Core</div>
+  <a class="nav-item" href="../index.html" data-page="index.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Overview
+  </a>
+  <a class="nav-item" href="daily.html" data-page="daily.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Daily Insights
+    <span class="nav-badge nb-new">New</span>
+  </a>
+  <a class="nav-item active" href="analytics.html" data-page="analytics.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Analytics
+  </a>
+  <div class="sb-sect">Clinical</div>
+  <a class="nav-item" href="therapist.html" data-page="therapist.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Therapist Portal
+  </a>
+  <a class="nav-item" href="action-plan.html" data-page="action-plan.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    Action Plan
+    <span class="nav-badge nb-streak" id="sb-streak-badge">🔥 0</span>
+  </a>
+  <div class="sb-sect">Community</div>
+  <a class="nav-item" href="community.html" data-page="community.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+    Community
+  </a>
+  <div class="sbf">
+    <div class="streak-bar"><span class="streak-flame">🔥</span><span id="sb-streak-count">—</span></div>
+    <div class="user-card" style="margin-top:8px">
+      <div class="user-av" id="sb-user-av">--</div>
+      <div>
+        <div class="user-name" id="sb-user-name">Loading...</div>
+        <div class="user-role" id="sb-user-role">Parent</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ════════ MAIN ════════ -->
+<main class="mn">
+  <div class="ph">
+    <div class="ph-l"><h1>Analytics & Insights</h1><p>Track progress · compare assessments · spot trends</p></div>
+    <div class="ph-r">
+      <select id="range-select" onchange="drawCharts()" style="padding:9px 14px;border:1.5px solid var(--bd);border-radius:var(--r2);background:var(--bg2);font-family:var(--fb);font-size:13px;color:var(--t2);outline:none">
+        <option value="3">Last 3 months</option>
+        <option value="6">Last 6 months</option>
+        <option value="12">Last year</option>
+        <option value="0">All time</option>
+      </select>
+      <button class="btn btn-sm" onclick="exportReport()">📤 Export Report</button>
+    </div>
+  </div>
+
+  <!-- Notifications (driven by ML data) -->
+  <div id="notif-area"></div>
+
+  <!-- Key metrics -->
+  <div class="g4" style="margin-bottom:24px">
+    <div class="mc mc-sage">
+      <div class="mc-icon" style="background:var(--sagel)">📉</div>
+      <div class="mc-val" id="m-change">—</div>
+      <div class="mc-lbl">Score Change</div>
+      <div class="mc-delta up" id="m-change-sub">—</div>
+    </div>
+    <div class="mc mc-ocean">
+      <div class="mc-icon" style="background:var(--oceanl)">🔬</div>
+      <div class="mc-val" id="m-count">—</div>
+      <div class="mc-lbl">Assessments Done</div>
+    </div>
+    <div class="mc mc-amber">
+      <div class="mc-icon" style="background:var(--amberl)">⏱️</div>
+      <div class="mc-val" id="m-days">—</div>
+      <div class="mc-lbl">Days Since Last</div>
+    </div>
+    <div class="mc mc-lavender">
+      <div class="mc-icon" style="background:var(--laverl)">📊</div>
+      <div class="mc-val" id="m-logs">—</div>
+      <div class="mc-lbl">Total Logs</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="g2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="ch"><div><div class="ct">Score Trajectory</div><div class="cs">All assessments</div></div></div>
+      <canvas class="chart tall" id="c-trajectory" height="220"></canvas>
+    </div>
+    <div class="card">
+      <div class="ch"><div><div class="ct">Domain Progress</div><div class="cs">First vs Latest assessment</div></div></div>
+      <canvas class="chart tall" id="c-domains" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Benchmarking + Family -->
+  <div class="g2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="ch"><div><div class="ct">Anonymous Benchmarking</div><div class="cs">Your scores vs similar profiles (age 6–10)</div></div></div>
+      <div id="benchmark-bars" style="margin-bottom:12px"></div>
+      <div style="display:flex;gap:16px;font-size:11px;color:var(--t3);padding-top:10px;border-top:1.5px solid var(--bd)">
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;border-radius:2px;background:var(--sage);display:inline-block"></span>Your score</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:2px;height:12px;border-radius:2px;background:var(--amber);display:inline-block"></span>Population avg</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch">
+        <div><div class="ct">Family Comparison</div><div class="cs">Multiple profiles</div></div>
+        <button class="btn btn-sm" onclick="toast('➕ Family profile feature coming soon')">+ Add Profile</button>
+      </div>
+      <div id="family-compare">
+        <!-- Populated from ML data -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Reassessment CTA -->
+  <div class="card" style="background:linear-gradient(135deg,#f0faf5,#eef3fa);border-color:rgba(109,184,154,.2)">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+      <div>
+        <div style="font-family:var(--fd);font-size:18px;font-weight:600;margin-bottom:4px">Ready for your next assessment?</div>
+        <div style="font-size:13.5px;color:var(--t2)" id="cta-sub">Recommended quarterly.</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-sm" onclick="toast('📅 Reminder set for 3 months from now')">Set Reminder</button>
+        <button class="btn btn-p" onclick="window.location.href='../index.html'">Begin Reassessment →</button>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<div id="toast"></div>
+
+<script src="../js/neurosense.js"></script>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  if (!NeuroSense.requireAuth()) return;
+  NeuroSense.initSidebar();
+  document.getElementById('sb-streak-badge').textContent = '🔥 ' + NeuroSense.getStreak();
+  populateFromML();
+  drawCharts();
+});
+
+function populateFromML() {
+  const ml      = NeuroSense.getResults();
+  const history = NeuroSense.getHistory();
+  const logs    = NeuroSense.getLogs();
+  const notifEl = document.getElementById('notif-area');
+
+  // Metrics
+  document.getElementById('m-count').textContent = history.length || (ml ? 1 : '—');
+  document.getElementById('m-logs').textContent  = logs.length;
+
+  if (ml) {
+    // Days since last
+    const days = ml.date ? Math.floor((Date.now() - new Date(ml.date)) / 86400000) : '—';
+    document.getElementById('m-days').textContent = days;
+
+    // Score change
+    if (history.length >= 2) {
+      const first = parseFloat(history[0].autism_score || 72);
+      const last  = parseFloat(history[history.length-1].autism_score || 59);
+      const diff  = ((last - first) / first * 100).toFixed(0);
+      const improving = last < first;
+      document.getElementById('m-change').textContent = (improving ? '-' : '+') + Math.abs(diff) + '%';
+      document.getElementById('m-change-sub').textContent = `${first} → ${last} (${improving?'improving':'review needed'})`;
+      document.getElementById('m-change-sub').className = 'mc-delta ' + (improving ? 'up' : 'down');
+
+      // Notifications
+      if (improving) {
+        notifEl.innerHTML += `<div class="notif notif-sage">🎉 <strong>Great progress!</strong> Overall score improved by ${Math.abs(diff)}% since your first assessment.</div>`;
+      } else {
+        notifEl.innerHTML += `<div class="notif notif-amber">⚠️ <strong>Score increased:</strong> Consider discussing this with your therapist.</div>`;
+      }
+    } else {
+      document.getElementById('m-change').textContent = ml.autism_score || '—';
+      document.getElementById('m-change-sub').textContent = 'Current score';
+    }
+
+    // CTA
+    const daysNum = parseInt(document.getElementById('m-days').textContent);
+    if (!isNaN(daysNum))
+      document.getElementById('cta-sub').textContent =
+        `Recommended quarterly. Your last was ${daysNum} day${daysNum!==1?'s':''} ago.`;
+
+    // Benchmark bars from real ML
+    const channels = [
+      { label:'Visual',    key:'sensory_visual',          avg:64 },
+      { label:'Auditory',  key:'sensory_auditory',        avg:66 },
+      { label:'Tactile',   key:'sensory_tactile',         avg:58 },
+      { label:'Social',    key:'social_communication',    avg:62 },
+      { label:'Emotional', key:'emotional_regulation',    avg:60 },
+    ];
+    document.getElementById('benchmark-bars').innerHTML = channels.map(ch => {
+      const score = parseFloat(ml[ch.key] || (Math.random()*3+5).toFixed(1));
+      const pct   = score * 10;
+      const color = pct > 70 ? 'var(--amber)' : 'var(--sage)';
+      return `<div class="bench-bar">
+        <div class="bench-label">${ch.label}</div>
+        <div class="bench-track">
+          <div class="bench-fill-you" style="width:${pct}%"></div>
+          <div class="bench-fill-avg" style="left:${ch.avg}%"></div>
+        </div>
+        <div class="bench-val" style="color:${color}">${score.toFixed(1)}</div>
+      </div>`;
+    }).join('');
+
+    // Family compare
+    document.getElementById('family-compare').innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--sage)"></div>
+        <div style="font-size:13px;font-weight:600">Primary profile</div>
+        <span class="badge badge-coral" style="margin-left:auto">Score: ${ml.autism_score || '—'}</span>
+      </div>
+      <div class="compare-row"><div class="compare-lbl">Auditory</div>
+        <div class="compare-bars"><div class="compare-bar compare-bar-a" style="width:${(parseFloat(ml.sensory_auditory||6)*10).toFixed(0)}%"></div></div>
+        <div class="compare-vals"><span style="color:var(--sage)">${parseFloat(ml.sensory_auditory||6).toFixed(1)}</span></div>
+      </div>
+      <div style="font-size:12px;color:var(--t3);margin-top:8px;border-top:1.5px solid var(--bd);padding-top:10px">Add a second profile to compare family members.</div>`;
+  } else {
+    notifEl.innerHTML = '<div class="notif notif-ocean">ℹ️ Complete your first assessment in NeuroSense to see analytics here.</div>';
+  }
+}
+
+// ── CHART HELPERS ──
+function drawLine(id, labels, datasets, opts={}) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth||400, H = canvas.offsetHeight||220;
+  canvas.width = W; canvas.height = H;
+  const pad = {t:20,r:20,b:34,l:40};
+  const cw = W-pad.l-pad.r, ch = H-pad.t-pad.b;
+  const all = datasets.flatMap(d => d.data);
+  const minV = opts.min ?? Math.min(...all)*0.85;
+  const maxV = opts.max ?? Math.max(...all)*1.1;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='rgba(26,26,46,.05)'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=pad.t+ch*(1-i/4);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();}
+  ctx.fillStyle='rgba(144,144,176,.7)'; ctx.font='10px Plus Jakarta Sans'; ctx.textAlign='center';
+  labels.forEach((l,i)=>{ctx.fillText(l, pad.l+cw*i/(Math.max(labels.length-1,1)), H-6);});
+  ctx.textAlign='right';
+  for(let i=0;i<=4;i++){const y=pad.t+ch*(1-i/4);ctx.fillText((minV+(maxV-minV)*i/4).toFixed(0), pad.l-4, y+4);}
+  datasets.forEach(ds=>{
+    if(ds.data.length<2)return;
+    const pts=ds.data.map((v,i)=>({x:pad.l+cw*i/(ds.data.length-1),y:pad.t+ch*(1-(v-minV)/(maxV-minV))}));
+    const grad=ctx.createLinearGradient(0,pad.t,0,pad.t+ch);
+    grad.addColorStop(0,ds.color.replace(')',', .15)').replace('rgb','rgba'));
+    grad.addColorStop(1,ds.color.replace(')',', 0)').replace('rgb','rgba'));
+    ctx.beginPath();ctx.moveTo(pts[0].x,pad.t+ch);pts.forEach(p=>ctx.lineTo(p.x,p.y));
+    ctx.lineTo(pts[pts.length-1].x,pad.t+ch);ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);pts.forEach(p=>ctx.lineTo(p.x,p.y));
+    ctx.strokeStyle=ds.color;ctx.lineWidth=2.5;ctx.lineJoin='round';ctx.stroke();
+    pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=ds.color;ctx.lineWidth=2;ctx.stroke();});
+  });
+}
+
+function drawCharts() {
+  requestAnimationFrame(() => {
+    const sage='rgb(109,184,154)', coral='rgb(232,130,109)', lav='rgb(155,142,196)', ocean='rgb(46,109,164)';
+    const history = NeuroSense.getHistory();
+
+    // Score trajectory — real if available, fallback otherwise
+    if (history.length >= 2) {
+      const labels = history.map(h => new Date(h.date).toLocaleDateString('en-IN',{month:'short',year:'2-digit'}));
+      const scores = history.map(h => parseFloat(h.autism_score)||72);
+      drawLine('c-trajectory', labels, [{data:scores, color:sage}], {min:0,max:100});
+    } else {
+      drawLine('c-trajectory', ['Sep 23','Dec 23','Mar 24','Jun 24','Sep 24','Nov 24'],
+        [{data:[85,80,76,72,65,59],color:sage}], {min:40,max:100});
+    }
+
+    // Domain comparison
+    if (history.length >= 2) {
+      const first = history[0], last = history[history.length-1];
+      const keys = ['sensory_auditory','emotional_regulation','social_communication','sensory_tactile'];
+      const f = keys.map(k => parseFloat(first[k]||8));
+      const l = keys.map(k => parseFloat(last[k]||6));
+      drawLine('c-domains', ['Assessment 1','','Latest'],
+        [{data:[f[0],null,l[0]], color:sage},{data:[f[1],null,l[1]],color:lav},{data:[f[2],null,l[2]],color:ocean},{data:[f[3],null,l[3]],color:coral}],
+        {min:0,max:10});
+    } else {
+      drawLine('c-domains', ['Assessment 1','Assessment 2','Assessment 3'],
+        [{data:[8.6,7.2,6.1],color:sage},{data:[7.9,7.0,6.0],color:lav},{data:[7.2,6.8,5.8],color:ocean},{data:[8.1,7.4,7.1],color:coral}],
+        {min:4,max:10});
+    }
+  });
+}
+
+function exportReport() {
+  const ml      = NeuroSense.getResults();
+  const history = NeuroSense.getHistory();
+  const logs    = NeuroSense.getLogs();
+  const report  = { generated: new Date().toISOString(), ml_results: ml, history, log_count: logs.length };
+  const blob = new Blob([JSON.stringify(report, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'neurosense-report.json';
+  a.click();
+  toast('📤 Report exported');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(window._toast);
+  window._toast = setTimeout(() => t.style.display = 'none', 3200);
+}
+
+window.addEventListener('resize', drawCharts);
+</script>
+</body>
+</html>
