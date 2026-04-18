@@ -616,7 +616,8 @@
     .mcl { font-size: 11px; color: var(--t2); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
 
     /* ── Grid layouts ── */
-    .g2   { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+    .g2   { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; align-items: start; }
+    .g2.eq { align-items: stretch; }
     .card {
       background: linear-gradient(160deg, #111b30 0%, #0d1525 100%);
       border: 1px solid rgba(255,255,255,.07);
@@ -624,7 +625,11 @@
       padding: 26px;
       transition: var(--tr);
       box-shadow: 0 4px 24px rgba(0,0,0,.2);
+      display: flex;
+      flex-direction: column;
     }
+    .card canvas { flex-shrink: 0; }
+    .card img.plot { width: 100%; max-height: 52vh; border-radius: 8px; margin-top: 8px; object-fit: contain; display: block; }
     .card:hover { border-color: rgba(56,217,245,.15); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
     .cf   { grid-column: 1 / -1; }
     .ch   { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--bd); }
@@ -1190,6 +1195,7 @@
       .rep-ch-grid { grid-template-columns: repeat(3, 1fr); }
     }
   </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -1503,6 +1509,26 @@
         Retake Assessment
       </div>
 
+      <div class="sblb">Research</div>
+      <div class="sbi" data-d="mperf" onclick="sd('mperf')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Model Performance
+      </div>
+      <div class="sbi" data-d="xai" onclick="sd('xai')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+        </svg>
+        Explainability
+      </div>
+      <div class="sbi" data-d="dset" onclick="sd('dset')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+        </svg>
+        Dataset Insights
+      </div>
+
       <div class="sbf">
         <div class="sbu">
           <div class="sbav" id="dAv">?</div>
@@ -1594,6 +1620,24 @@
       <div class="ds" id="d-rep">
         <div class="ph"><div><h1>Detailed Report</h1><p>Complete analysis</p></div></div>
         <div id="repC"></div>
+      </div>
+
+      <!-- Model Performance -->
+      <div class="ds" id="d-mperf">
+        <div class="ph"><div><h1>Model Performance</h1><p>Comparative evaluation of all 4 ML models</p></div></div>
+        <div id="mperfC"></div>
+      </div>
+
+      <!-- Explainability -->
+      <div class="ds" id="d-xai">
+        <div class="ph"><div><h1>Explainability (XAI)</h1><p>SHAP analysis &amp; feature attribution</p></div></div>
+        <div id="xaiC"></div>
+      </div>
+
+      <!-- Dataset Insights -->
+      <div class="ds" id="d-dset">
+        <div class="ph"><div><h1>Dataset Insights</h1><p>Training data statistics &amp; distributions</p></div></div>
+        <div id="dsetC"></div>
       </div>
 
     </main>
@@ -2007,6 +2051,9 @@
     if (s === 'sen') renderSen();
     if (s === 'rec') renderRec();
     if (s === 'rep') renderRep();
+    if (s === 'mperf') renderModelPerf();
+    if (s === 'xai') renderXAI();
+    if (s === 'dset') renderDataset();
     closeMobNav();
   }
 
@@ -2579,6 +2626,417 @@
     </div>`;
 
     e.innerHTML = h;
+  }
+
+  // ─────────────────────────────────────────────
+  // AQ-10 Feature Label Mapping
+  // ─────────────────────────────────────────────
+  const AQ_LABELS = {
+    'A1_Score':  'Sensory Sensitivity',
+    'A2_Score':  'Attention to Detail',
+    'A3_Score':  'Multitasking',
+    'A4_Score':  'Attention Switching',
+    'A5_Score':  'Communication',
+    'A6_Score':  'Social Awareness',
+    'A7_Score':  'Theory of Mind',
+    'A8_Score':  'Pattern Seeking',
+    'A9_Score':  'Facial Recognition',
+    'A10_Score': 'Social Intuition',
+    'age':       'Age',
+    'gender':    'Gender',
+    'jaundice':  'Jaundice at Birth',
+    'family_autism': 'Family ASD History',
+  };
+  function featureLabel(f) { return AQ_LABELS[f] || f.replace('_Score','').replace('_',' '); }
+  function hint(text) { return `<p style="font-size:12px;color:var(--t2);line-height:1.6;margin:12px 0 0;padding:12px 14px;background:rgba(99,102,241,0.06);border-left:3px solid #6366f1;border-radius:0 8px 8px 0">${text}</p>`; }
+
+  // ─────────────────────────────────────────────
+  // Research: Model Performance
+  // ─────────────────────────────────────────────
+  let mperfLoaded = false;
+  const chartInstances = {};
+  function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
+
+  async function renderModelPerf() {
+    const el = document.getElementById('mperfC');
+    if (mperfLoaded) return;
+    el.innerHTML = '<p style="color:var(--t2);padding:20px">Loading model data...</p>';
+    try {
+      const data = await api('/api/ml/model-stats');
+      const models = data.models;
+      const evalData = data.evaluation;
+      const names = Object.keys(models);
+      if (names.length === 0) { el.innerHTML = '<p style="color:var(--t2);padding:20px">No model data available. Run training first.</p>'; return; }
+
+      const colors = ['#6366f1','#f59e0b','#10b981','#ef4444'];
+      const colorsBg = ['rgba(99,102,241,0.15)','rgba(245,158,11,0.15)','rgba(16,185,129,0.15)','rgba(239,68,68,0.15)'];
+
+      // Metric cards
+      let h = '<div class="mr" style="margin-bottom:20px">';
+      names.forEach((n,i) => {
+        const m = models[n].metrics;
+        h += `<div class="mc" style="border-left:3px solid ${colors[i]}"><div class="mci" style="font-size:14px">${n}</div><div class="mcv">${(m.accuracy*100).toFixed(1)}%</div><div class="mcl">Accuracy | F1: ${m.f1.toFixed(3)}</div></div>`;
+      });
+      h += '</div>';
+
+      // Comparison table
+      h += `<div class="card" style="margin-bottom:20px">
+        <div class="ch"><div><div class="ct">Model Comparison</div><div class="cs">Performance metrics across all models</div></div></div>
+        ${hint('<strong>How to read this table:</strong> <strong>Accuracy</strong> = overall correctness. <strong>Precision</strong> = when the model says "ASD", how often is it right? (fewer false alarms). <strong>Recall</strong> = of all actual ASD cases, how many did the model catch? (fewer missed cases). <strong>F1</strong> = harmonic mean of precision & recall — a single number balancing both. <strong>CV Mean</strong> = 5-fold cross-validation accuracy — tests the model on 5 different data splits to ensure it generalizes well and isn\'t overfitting.')}
+        <div style="overflow-x:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse;font-size:13px">
+          <tr style="border-bottom:1px solid var(--b2)">
+            <th style="text-align:left;padding:10px;color:var(--t2)">Model</th>
+            <th style="text-align:center;padding:10px;color:var(--t2)">Accuracy</th>
+            <th style="text-align:center;padding:10px;color:var(--t2)">Precision</th>
+            <th style="text-align:center;padding:10px;color:var(--t2)">Recall</th>
+            <th style="text-align:center;padding:10px;color:var(--t2)">F1 Score</th>
+            <th style="text-align:center;padding:10px;color:var(--t2)">CV Mean</th>
+          </tr>`;
+      names.forEach((n,i) => {
+        const m = models[n].metrics;
+        h += `<tr style="border-bottom:1px solid var(--b2)">
+          <td style="padding:10px;font-weight:600"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i]};margin-right:8px"></span>${n}</td>
+          <td style="text-align:center;padding:10px">${(m.accuracy*100).toFixed(1)}%</td>
+          <td style="text-align:center;padding:10px">${(m.precision*100).toFixed(1)}%</td>
+          <td style="text-align:center;padding:10px">${(m.recall*100).toFixed(1)}%</td>
+          <td style="text-align:center;padding:10px;font-weight:600">${m.f1.toFixed(4)}</td>
+          <td style="text-align:center;padding:10px">${m.cv_mean ? (m.cv_mean*100).toFixed(1)+'%' : 'N/A'}</td>
+        </tr>`;
+      });
+      h += '</table></div></div>';
+
+      // Charts row
+      h += '<div class="g2 eq">';
+      h += `<div class="card"><div class="ch"><div><div class="ct">Accuracy Comparison</div></div></div><div style="height:280px"><canvas id="chAccuracy"></canvas></div>${hint('Each bar shows what percentage of all predictions (both ASD and non-ASD) the model got correct. Higher is better. All 4 models score above 95%, which is strong for a screening tool.')}</div>`;
+      h += `<div class="card"><div class="ch"><div><div class="ct">Precision vs Recall</div></div></div><div style="height:280px"><canvas id="chPR"></canvas></div>${hint('<strong>Precision (purple):</strong> Of people the model flagged as ASD, how many truly have ASD? High precision = fewer false alarms. <strong>Recall (green):</strong> Of all people who truly have ASD, how many did the model catch? High recall = fewer missed cases. In medical screening, <strong>recall matters more</strong> — missing a real case is worse than a false alarm.')}</div>`;
+      h += '</div>';
+
+      // ROC + Confusion Matrix
+      h += '<div class="g2 eq">';
+      h += `<div class="card"><div class="ch"><div><div class="ct">ROC Curves</div><div class="cs">Receiver Operating Characteristic</div></div></div><div style="height:300px"><canvas id="chROC"></canvas></div>${hint('The ROC curve shows model performance at every possible decision threshold. The closer the curve hugs the <strong>top-left corner</strong>, the better the model. <strong>AUC (Area Under Curve)</strong> summarizes this: 1.0 = perfect, 0.5 = random guessing. The dashed diagonal line represents a coin flip. All our models have AUC &gt; 0.99, meaning they separate ASD from non-ASD almost perfectly.')}</div>`;
+      h += `<div class="card"><div class="ch"><div><div class="ct">Confusion Matrices</div><div class="cs">Prediction accuracy breakdown</div></div></div><div id="cmGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;min-height:300px"></div>${hint('<strong>How to read:</strong> Each 2x2 grid shows the model\'s predictions vs reality. <strong>Green cells (TN, TP)</strong> = correct predictions. <strong>Red cells (FP, FN)</strong> = errors. <strong>FN (False Negative)</strong> is the most dangerous error in screening — it means a person with ASD was told they don\'t have it. Lower FN = safer model.')}</div>`;
+      h += '</div>';
+
+      el.innerHTML = h;
+
+      // Accuracy bar chart
+      destroyChart('chAccuracy');
+      chartInstances['chAccuracy'] = new Chart(document.getElementById('chAccuracy'), {
+        type: 'bar',
+        data: { labels: names, datasets: [{
+          label: 'Accuracy', data: names.map(n => models[n].metrics.accuracy * 100),
+          backgroundColor: colors, borderRadius: 6, barThickness: 40
+        }]},
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 85, max: 100, ticks: { callback: v => v+'%', color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { ticks: { color: '#888' }, grid: { display: false } } } }
+      });
+
+      // Precision vs Recall grouped bar
+      destroyChart('chPR');
+      chartInstances['chPR'] = new Chart(document.getElementById('chPR'), {
+        type: 'bar',
+        data: { labels: names, datasets: [
+          { label: 'Precision', data: names.map(n => models[n].metrics.precision * 100), backgroundColor: '#6366f1', borderRadius: 4 },
+          { label: 'Recall',    data: names.map(n => models[n].metrics.recall * 100),    backgroundColor: '#10b981', borderRadius: 4 }
+        ]},
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#888' } } }, scales: { y: { min: 80, max: 100, ticks: { callback: v => v+'%', color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { ticks: { color: '#888' }, grid: { display: false } } } }
+      });
+
+      // ROC curves
+      if (evalData && Object.keys(evalData).length > 0) {
+        destroyChart('chROC');
+        const rocDatasets = [];
+        names.forEach((n, i) => {
+          if (evalData[n] && evalData[n].roc) {
+            const roc = evalData[n].roc;
+            rocDatasets.push({
+              label: `${n} (AUC=${roc.auc.toFixed(3)})`,
+              data: roc.fpr.map((fpr, j) => ({ x: fpr, y: roc.tpr[j] })),
+              borderColor: colors[i], backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2, tension: 0.3
+            });
+          }
+        });
+        rocDatasets.push({ label: 'Random (AUC=0.5)', data: [{x:0,y:0},{x:1,y:1}], borderColor: '#555', borderDash: [5,5], pointRadius: 0, borderWidth: 1 });
+        chartInstances['chROC'] = new Chart(document.getElementById('chROC'), {
+          type: 'scatter',
+          data: { datasets: rocDatasets },
+          options: { responsive: true, maintainAspectRatio: false, showLine: true, plugins: { legend: { labels: { color: '#888', font: { size: 11 } } } },
+            scales: { x: { title: { display: true, text: 'False Positive Rate', color: '#888' }, min: 0, max: 1, ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                      y: { title: { display: true, text: 'True Positive Rate', color: '#888' }, min: 0, max: 1, ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } } } }
+        });
+
+        // Confusion matrices
+        const cmEl = document.getElementById('cmGrid');
+        let cmH = '';
+        names.forEach((n, i) => {
+          if (evalData[n] && evalData[n].confusion_matrix) {
+            const cm = evalData[n].confusion_matrix;
+            const total = cm.tp + cm.tn + cm.fp + cm.fn;
+            cmH += `<div style="text-align:center">
+              <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:${colors[i]}">${n}</div>
+              <table style="width:100%;border-collapse:collapse;font-size:11px">
+                <tr><td></td><td style="padding:4px;color:var(--t2);font-weight:600">Pred No</td><td style="padding:4px;color:var(--t2);font-weight:600">Pred Yes</td></tr>
+                <tr><td style="padding:4px;color:var(--t2);font-weight:600">Actual No</td>
+                    <td style="padding:8px;background:rgba(16,185,129,0.15);border-radius:4px;font-weight:700">${cm.tn}</td>
+                    <td style="padding:8px;background:rgba(239,68,68,0.1);border-radius:4px">${cm.fp}</td></tr>
+                <tr><td style="padding:4px;color:var(--t2);font-weight:600">Actual Yes</td>
+                    <td style="padding:8px;background:rgba(239,68,68,0.1);border-radius:4px">${cm.fn}</td>
+                    <td style="padding:8px;background:rgba(16,185,129,0.15);border-radius:4px;font-weight:700">${cm.tp}</td></tr>
+              </table>
+            </div>`;
+          }
+        });
+        cmEl.innerHTML = cmH;
+      }
+
+      mperfLoaded = true;
+    } catch (e) { el.innerHTML = '<p style="color:var(--red);padding:20px">Failed to load model data.</p>'; console.error(e); }
+  }
+
+  // ─────────────────────────────────────────────
+  // Research: Explainability (XAI)
+  // ─────────────────────────────────────────────
+  let xaiLoaded = false;
+  async function renderXAI() {
+    const el = document.getElementById('xaiC');
+    if (xaiLoaded) return;
+    el.innerHTML = '<p style="color:var(--t2);padding:20px">Loading explainability data...</p>';
+    try {
+      const data = await api('/api/ml/model-stats');
+      const shap = data.shap;
+      const models = data.models;
+      if (!shap || !shap.feature_names) { el.innerHTML = '<p style="color:var(--t2);padding:20px">No SHAP data available. Run training with SHAP enabled.</p>'; return; }
+
+      const features = shap.feature_names;
+      const featureLabels = features.map(f => featureLabel(f));
+      const colors = { rf: '#6366f1', xgb: '#f59e0b', lgb: '#10b981' };
+
+      let h = '';
+
+      // SHAP explanation card
+      h += `<div class="card" style="margin-bottom:20px">
+        <div class="ch"><div><div class="ct">What is SHAP?</div></div></div>
+        <p style="font-size:13px;color:var(--t2);line-height:1.6;margin:0">
+          <strong>SHAP (SHapley Additive exPlanations)</strong> is a game-theoretic approach that explains individual predictions by computing the contribution of each feature. Higher SHAP values mean the feature has a stronger impact on pushing the prediction toward ASD. This makes our model <strong>transparent and interpretable</strong> — essential for clinical decision support.
+        </p>
+      </div>`;
+
+      // AQ-10 reference table
+      h += `<div class="card" style="margin-bottom:20px">
+        <div class="ch"><div><div class="ct">AQ-10 Feature Reference</div><div class="cs">What each feature code means in clinical terms</div></div></div>
+        <div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:12px">
+          <tr style="border-bottom:1px solid var(--b2)">
+            <th style="text-align:left;padding:8px;color:var(--t2)">Code</th>
+            <th style="text-align:left;padding:8px;color:var(--t2)">Feature Name</th>
+            <th style="text-align:left;padding:8px;color:var(--t2)">What It Measures</th>
+            <th style="text-align:left;padding:8px;color:var(--t2)">DSM-5 Domain</th>
+          </tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">A1</td><td style="padding:8px;font-weight:600">Sensory Sensitivity</td><td style="padding:8px;color:var(--t2)">Notices small sounds when others do not</td><td style="padding:8px;color:var(--violet)">Restricted/Repetitive</td></tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">A2</td><td style="padding:8px;font-weight:600">Attention to Detail</td><td style="padding:8px;color:var(--t2)">Focuses on small details over the whole picture</td><td style="padding:8px;color:var(--violet)">Restricted/Repetitive</td></tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">A3</td><td style="padding:8px;font-weight:600">Multitasking</td><td style="padding:8px;color:var(--t2)">Difficulty doing more than one thing at once</td><td style="padding:8px;color:var(--cyan)">Communication</td></tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">A4</td><td style="padding:8px;font-weight:600">Attention Switching</td><td style="padding:8px;color:var(--t2)">Difficulty switching back after an interruption</td><td style="padding:8px;color:var(--cyan)">Communication</td></tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">A5</td><td style="padding:8px;font-weight:600">Communication</td><td style="padding:8px;color:var(--t2)">Difficulty reading between the lines</td><td style="padding:8px;color:var(--cyan)">Communication</td></tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">A6</td><td style="padding:8px;font-weight:600">Social Awareness</td><td style="padding:8px;color:var(--t2)">Difficulty knowing if someone is getting bored</td><td style="padding:8px;color:var(--green)">Social Interaction</td></tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">A7</td><td style="padding:8px;font-weight:600">Theory of Mind</td><td style="padding:8px;color:var(--t2)">Difficulty understanding characters' intentions in a story</td><td style="padding:8px;color:var(--green)">Social Interaction</td></tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">A8</td><td style="padding:8px;font-weight:600">Pattern Seeking</td><td style="padding:8px;color:var(--t2)">Likes collecting information about categories of things</td><td style="padding:8px;color:var(--violet)">Restricted/Repetitive</td></tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">A9</td><td style="padding:8px;font-weight:600">Facial Recognition</td><td style="padding:8px;color:var(--t2)">Difficulty reading what someone thinks/feels from their face</td><td style="padding:8px;color:var(--green)">Social Interaction</td></tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">A10</td><td style="padding:8px;font-weight:600">Social Intuition</td><td style="padding:8px;color:var(--t2)">Difficulty working out people's intentions</td><td style="padding:8px;color:var(--green)">Social Interaction</td></tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">age</td><td style="padding:8px;font-weight:600">Age</td><td style="padding:8px;color:var(--t2)">Participant's age in years</td><td style="padding:8px;color:var(--t2)">Demographic</td></tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">gender</td><td style="padding:8px;font-weight:600">Gender</td><td style="padding:8px;color:var(--t2)">Male (1) or Female (0)</td><td style="padding:8px;color:var(--t2)">Demographic</td></tr>
+          <tr style="border-bottom:1px solid var(--b2)"><td style="padding:8px;font-family:monospace">jaundice</td><td style="padding:8px;font-weight:600">Jaundice at Birth</td><td style="padding:8px;color:var(--t2)">Whether the person was born with jaundice</td><td style="padding:8px;color:var(--t2)">Medical History</td></tr>
+          <tr><td style="padding:8px;font-family:monospace">family_autism</td><td style="padding:8px;font-weight:600">Family ASD History</td><td style="padding:8px;color:var(--t2)">Whether a family member has been diagnosed with ASD</td><td style="padding:8px;color:var(--t2)">Medical History</td></tr>
+        </table></div>
+      </div>`;
+
+      // SHAP bar comparison chart (top 8 features only)
+      h += `<div class="card" style="margin-bottom:20px"><div class="ch"><div><div class="ct">Normalized Feature Importance — All 4 Models</div><div class="cs">Top 8 most influential features (normalized to 0-1 per model)</div></div></div><canvas id="chSHAP" height="400"></canvas>${hint('<strong>How to read:</strong> Each model\'s values are normalized to 0-1 (1 = most important feature for that model) so all 4 models are visually comparable. RF, XGBoost, and LightGBM use SHAP values; SVM uses <strong>permutation importance</strong> (randomly shuffles each feature and measures accuracy drop). Features where all 4 bars are tall are the most robust ASD indicators.')}</div>`;
+
+      // SVM note
+      h += hint('<strong>Note on SVM:</strong> The SHAP summary plots below only show tree-based models (RF, XGBoost, LightGBM) because SHAP\'s TreeExplainer requires tree structures. SVM uses a completely different math (kernel-based decision boundaries), so we measure its feature importance via <strong>permutation importance</strong> — visible in the normalized chart above.');
+
+      // SHAP plot images — side by side, 2 per row
+      h += '<div class="g2 eq">';
+      h += `<div class="card"><div class="ch"><div><div class="ct">SHAP Summary — Random Forest</div><div class="cs">Feature impact direction & magnitude</div></div></div><img class="plot" src="/ml/plots/shap_summary.png" onerror="this.parentElement.innerHTML+='<p style=color:var(--t2);font-size:12px>Plot not available</p>';this.remove()">${hint('Each dot = one patient. <strong>Red</strong> = high feature value, <strong>Blue</strong> = low. Right of center = pushes toward ASD.')}</div>`;
+      h += `<div class="card"><div class="ch"><div><div class="ct">SHAP Summary — XGBoost</div><div class="cs">Feature impact direction & magnitude</div></div></div><img class="plot" src="/ml/plots/shap_summary_xgb.png" onerror="this.parentElement.innerHTML+='<p style=color:var(--t2);font-size:12px>Plot not available</p>';this.remove()">${hint('Compare with RF — features both models agree on (e.g. A9, A6) are the most reliable ASD indicators.')}</div>`;
+      h += '</div>';
+
+      h += '<div class="g2 eq">';
+      h += `<div class="card"><div class="ch"><div><div class="ct">SHAP Summary — LightGBM</div><div class="cs">Feature impact direction & magnitude</div></div></div><img class="plot" src="/ml/plots/shap_summary_lgb.png" onerror="this.parentElement.innerHTML+='<p style=color:var(--t2);font-size:12px>Plot not available</p>';this.remove()">${hint('LightGBM gives more weight to Age — cross-reference with other models to separate real effects from artifacts.')}</div>`;
+      h += `<div class="card"><div class="ch"><div><div class="ct">SHAP Bar Chart — Feature Importance</div><div class="cs">Mean |SHAP value| ranking</div></div></div><img class="plot" src="/ml/plots/shap_bar.png" onerror="this.parentElement.innerHTML+='<p style=color:var(--t2);font-size:12px>Plot not available</p>';this.remove()">${hint('Ranks features by average absolute SHAP value — the key chart for your supervisor.')}</div>`;
+      h += '</div>';
+
+      // Feature importance comparison
+      h += `<div class="card" style="margin-bottom:20px"><div class="ch"><div><div class="ct">Feature Importance Comparison</div><div class="cs">All tree-based models side by side</div></div></div><img class="plot" src="/ml/plots/feature_importance.png" onerror="this.parentElement.innerHTML+='<p style=color:var(--t2);font-size:12px>Plot not available</p>';this.remove()">${hint('This side-by-side comparison shows how each tree-based model (RF, XGBoost, LightGBM) ranks feature importance differently. Features that appear at the top across all 3 models are the most reliable indicators. Discrepancies between models highlight where different algorithms interpret the data differently — a key insight for research.')}</div>`;
+
+      el.innerHTML = h;
+
+      // SHAP comparison bar chart — normalized to 0-1 per model
+      const rfShap = shap.rf_mean_shap || [];
+      const xgbShap = shap.xgb_mean_shap || [];
+      const svmShap = shap.svm_mean_importance || [];
+      const lgbShap = shap.lgb_mean_shap || [];
+
+      function normalize(arr) {
+        const mx = Math.max(...arr, 1e-10);
+        return arr.map(v => v / mx);
+      }
+      const rfNorm = normalize(rfShap);
+      const xgbNorm = normalize(xgbShap);
+      const svmNorm = normalize(svmShap);
+      const lgbNorm = normalize(lgbShap);
+
+      // Sort by average normalized importance across all 4 models, take top 8
+      const avgImp = rfNorm.map((v, i) => (v + xgbNorm[i] + svmNorm[i] + lgbNorm[i]) / 4);
+      const sortedIdx = avgImp.map((v, i) => i).sort((a, b) => avgImp[b] - avgImp[a]).slice(0, 8);
+      const sortedLabels = sortedIdx.map(i => featureLabels[i]);
+
+      destroyChart('chSHAP');
+      chartInstances['chSHAP'] = new Chart(document.getElementById('chSHAP'), {
+        type: 'bar',
+        data: { labels: sortedLabels, datasets: [
+          { label: 'Random Forest', data: sortedIdx.map(i => rfNorm[i]),  backgroundColor: '#6366f1', borderRadius: 3 },
+          { label: 'XGBoost',       data: sortedIdx.map(i => xgbNorm[i]), backgroundColor: '#f59e0b', borderRadius: 3 },
+          { label: 'SVM (Permutation)', data: sortedIdx.map(i => svmNorm[i]), backgroundColor: '#10b981', borderRadius: 3 },
+          { label: 'LightGBM',      data: sortedIdx.map(i => lgbNorm[i]), backgroundColor: '#ef4444', borderRadius: 3 },
+        ]},
+        options: { indexAxis: 'y', responsive: true,
+          plugins: { legend: { labels: { color: '#888' } } },
+          scales: { x: { title: { display: true, text: 'Normalized Feature Importance (0-1)', color: '#888' }, min: 0, max: 1, ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#888', font: { size: 11 } }, grid: { display: false } } } }
+      });
+
+      xaiLoaded = true;
+    } catch (e) { el.innerHTML = '<p style="color:var(--red);padding:20px">Failed to load explainability data.</p>'; console.error(e); }
+  }
+
+  // ─────────────────────────────────────────────
+  // Research: Dataset Insights
+  // ─────────────────────────────────────────────
+  let dsetLoaded = false;
+  async function renderDataset() {
+    const el = document.getElementById('dsetC');
+    if (dsetLoaded) return;
+    el.innerHTML = '<p style="color:var(--t2);padding:20px">Loading dataset statistics...</p>';
+    try {
+      const ds = await (await fetch('/api/ml/dataset-stats')).json();
+      if (ds.error) { el.innerHTML = '<p style="color:var(--t2);padding:20px">No dataset stats available.</p>'; return; }
+
+      let h = '';
+
+      // Overview metric cards
+      h += '<div class="mr" style="margin-bottom:20px">';
+      h += `<div class="mc c"><div class="mci">📊</div><div class="mcv">${ds.total_samples}</div><div class="mcl">Total Samples</div></div>`;
+      h += `<div class="mc v"><div class="mci">🧬</div><div class="mcv">${ds.n_features}</div><div class="mcl">Features</div></div>`;
+      h += `<div class="mc a"><div class="mci">🎯</div><div class="mcv">${ds.class_ratio}%</div><div class="mcl">ASD Positive Rate</div></div>`;
+      h += `<div class="mc g"><div class="mci">⚖️</div><div class="mcv">${ds.class_distribution['No ASD']}/${ds.class_distribution['ASD']}</div><div class="mcl">No ASD / ASD</div></div>`;
+      h += '</div>';
+
+      // Charts row 1: Class distribution + Gender
+      h += '<div class="g2 eq">';
+      h += `<div class="card"><div class="ch"><div><div class="ct">Class Distribution</div><div class="cs">Target variable balance</div></div></div><div style="height:280px"><canvas id="chClass"></canvas></div>${hint('<strong>Why this matters:</strong> Our dataset has 73% "No ASD" vs 27% "ASD" — this is <strong>imbalanced</strong>. If a model just predicted "No ASD" for everyone, it would still be 73% accurate! That\'s why we use stratified splits, class weighting, and evaluate with Precision/Recall/F1 — not just accuracy.')}</div>`;
+      h += `<div class="card"><div class="ch"><div><div class="ct">Demographics</div><div class="cs">Gender & medical history</div></div></div><div style="height:280px"><canvas id="chDemo"></canvas></div>${hint('<strong>Jaundice at birth</strong> and <strong>family ASD history</strong> are medical risk factors studied in ASD research. Their low prevalence in this dataset (10% and 13%) means the model has fewer examples to learn from for these features, but they can still be meaningful when present.')}</div>`;
+      h += '</div>';
+
+      // Charts row 2: Age distribution + Feature correlations
+      h += '<div class="g2 eq">';
+      h += `<div class="card"><div class="ch"><div><div class="ct">Age Distribution</div><div class="cs">Participant age histogram</div></div></div><div style="height:280px"><canvas id="chAge"></canvas></div>${hint('This shows the age range of participants in the training data. Most participants are between 17-40 years old. The model is most reliable for predictions within this age range — predictions for ages underrepresented in training data (e.g., 60+) should be interpreted with caution.')}</div>`;
+      h += `<div class="card"><div class="ch"><div><div class="ct">Feature Correlation with ASD</div><div class="cs">Pearson correlation coefficient</div></div></div><div style="height:280px"><canvas id="chCorr"></canvas></div>${hint('<strong>How to read:</strong> <strong>Green bars (positive)</strong> = higher values of this feature are associated with ASD diagnosis. <strong>Red bars (negative)</strong> = higher values are associated with non-ASD. The longer the bar, the stronger the relationship. Note: correlation does not imply causation — a feature being correlated with ASD doesn\'t mean it <em>causes</em> ASD.')}</div>`;
+      h += '</div>';
+
+      // Feature statistics table
+      h += `<div class="card" style="margin-bottom:20px">
+        <div class="ch"><div><div class="ct">Feature Statistics</div><div class="cs">Summary statistics for all ${ds.n_features} features</div></div></div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+          <tr style="border-bottom:1px solid var(--b2)">
+            <th style="text-align:left;padding:8px;color:var(--t2)">Feature</th>
+            <th style="text-align:center;padding:8px;color:var(--t2)">Mean</th>
+            <th style="text-align:center;padding:8px;color:var(--t2)">Std</th>
+            <th style="text-align:center;padding:8px;color:var(--t2)">Min</th>
+            <th style="text-align:center;padding:8px;color:var(--t2)">Median</th>
+            <th style="text-align:center;padding:8px;color:var(--t2)">Max</th>
+            <th style="text-align:center;padding:8px;color:var(--t2)">Correlation</th>
+          </tr>`;
+      ds.feature_names.forEach(f => {
+        const s = ds.feature_stats[f];
+        const corr = ds.correlations[f] || 0;
+        const corrColor = corr > 0.2 ? '#10b981' : corr < -0.1 ? '#ef4444' : '#888';
+        h += `<tr style="border-bottom:1px solid var(--b2)">
+          <td style="padding:8px;font-weight:600">${featureLabel(f)} <span style="color:var(--t3);font-weight:400;font-size:11px">(${f})</span></td>
+          <td style="text-align:center;padding:8px">${s.mean}</td>
+          <td style="text-align:center;padding:8px">${s.std}</td>
+          <td style="text-align:center;padding:8px">${s.min}</td>
+          <td style="text-align:center;padding:8px">${s.median}</td>
+          <td style="text-align:center;padding:8px">${s.max}</td>
+          <td style="text-align:center;padding:8px;font-weight:600;color:${corrColor}">${corr > 0 ? '+' : ''}${corr.toFixed(4)}</td>
+        </tr>`;
+      });
+      h += '</table></div></div>';
+
+      // Dataset info card
+      h += `<div class="card" style="margin-bottom:20px">
+        <div class="ch"><div><div class="ct">Dataset Information</div></div></div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.8">
+          <p><strong>Source:</strong> Autism Screening on Adults — UCI Machine Learning Repository / Kaggle</p>
+          <p><strong>Features:</strong> 10 AQ-10 behavioral items + age + gender + jaundice (at birth) + family autism history</p>
+          <p><strong>Target:</strong> Binary classification (ASD / No ASD)</p>
+          <p><strong>Imbalance:</strong> ${ds.class_ratio}% positive class — handled via stratified splits and class weighting</p>
+          <p><strong>Jaundice at birth:</strong> ${ds.jaundice_rate}% of participants</p>
+          <p><strong>Family autism history:</strong> ${ds.family_autism_rate}% of participants</p>
+        </div>
+      </div>`;
+
+      el.innerHTML = h;
+
+      // Class distribution donut
+      destroyChart('chClass');
+      chartInstances['chClass'] = new Chart(document.getElementById('chClass'), {
+        type: 'doughnut',
+        data: { labels: ['No ASD', 'ASD'], datasets: [{ data: [ds.class_distribution['No ASD'], ds.class_distribution['ASD']], backgroundColor: ['#6366f1','#ef4444'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#888' } } } }
+      });
+
+      // Demographics bar
+      destroyChart('chDemo');
+      chartInstances['chDemo'] = new Chart(document.getElementById('chDemo'), {
+        type: 'bar',
+        data: { labels: ['Male', 'Female', 'Jaundice', 'Family ASD'], datasets: [{
+          data: [ds.gender_split.male, ds.gender_split.female, Math.round(ds.total_samples * ds.jaundice_rate/100), Math.round(ds.total_samples * ds.family_autism_rate/100)],
+          backgroundColor: ['#6366f1','#a78bfa','#f59e0b','#ef4444'], borderRadius: 6
+        }]},
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { ticks: { color: '#888' }, grid: { display: false } } } }
+      });
+
+      // Age histogram
+      if (ds.age_distribution && ds.age_distribution.bins && ds.age_distribution.bins.length > 1) {
+        const bins = ds.age_distribution.bins;
+        const labels = [];
+        for (let i = 0; i < bins.length - 1; i++) labels.push(`${Math.round(bins[i])}-${Math.round(bins[i+1])}`);
+        destroyChart('chAge');
+        chartInstances['chAge'] = new Chart(document.getElementById('chAge'), {
+          type: 'bar',
+          data: { labels, datasets: [{ label: 'Count', data: ds.age_distribution.counts, backgroundColor: '#6366f1', borderRadius: 4 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'Participants', color: '#888' }, ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { title: { display: true, text: 'Age Range', color: '#888' }, ticks: { color: '#888' }, grid: { display: false } } } }
+        });
+      }
+
+      // Correlation chart
+      const corrs = ds.correlations;
+      const corrNames = Object.keys(corrs);
+      const corrVals = corrNames.map(n => corrs[n]);
+      const corrSorted = corrNames.map((n,i) => i).sort((a,b) => Math.abs(corrVals[b]) - Math.abs(corrVals[a]));
+      destroyChart('chCorr');
+      chartInstances['chCorr'] = new Chart(document.getElementById('chCorr'), {
+        type: 'bar',
+        data: { labels: corrSorted.map(i => featureLabel(corrNames[i])), datasets: [{
+          label: 'Correlation', data: corrSorted.map(i => corrVals[i]),
+          backgroundColor: corrSorted.map(i => corrVals[i] >= 0 ? '#10b981' : '#ef4444'), borderRadius: 4
+        }]},
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { x: { title: { display: true, text: 'Pearson r', color: '#888' }, ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#888', font: { size: 11 } }, grid: { display: false } } } }
+      });
+
+      dsetLoaded = true;
+    } catch (e) { el.innerHTML = '<p style="color:var(--red);padding:20px">Failed to load dataset statistics.</p>'; console.error(e); }
   }
 
   // ─────────────────────────────────────────────

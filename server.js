@@ -417,6 +417,24 @@ app.get('/api/entries', requireAuth, async (req, res) => {
   res.json({ entries: rowsToObjects(result) });
 });
 
+// ===== ANALYTICS API ENDPOINTS =====
+app.get('/api/ml/model-stats', (req, res) => {
+  const models = {};
+  if (rfModel) models['Random Forest'] = { metrics: rfModel.metrics, feature_importances: rfModel.feature_importances, feature_names: rfModel.feature_names, config: { n_estimators: rfModel.n_estimators, max_depth: rfModel.max_depth } };
+  if (xgbModel) models['XGBoost'] = { metrics: xgbModel.metrics, feature_importances: xgbModel.feature_importances, feature_names: xgbModel.feature_names, config: { n_estimators: xgbModel.n_estimators, max_depth: xgbModel.max_depth, learning_rate: xgbModel.learning_rate } };
+  if (svmModel) models['SVM'] = { metrics: svmModel.metrics, feature_names: svmModel.feature_names, config: { kernel: svmModel.kernel, C: svmModel.C, n_support_vectors: svmModel.support_vectors.length } };
+  if (lgbModel) models['LightGBM'] = { metrics: lgbModel.metrics, feature_importances: lgbModel.feature_importances, feature_names: lgbModel.feature_names, config: { n_estimators: lgbModel.n_estimators, num_leaves: lgbModel.num_leaves, learning_rate: lgbModel.learning_rate } };
+  res.json({ models, evaluation: modelEvaluation || {}, shap: shapData || {} });
+});
+
+app.get('/api/ml/dataset-stats', (req, res) => {
+  if (!datasetStats) return res.json({ error: 'Dataset stats not available' });
+  res.json(datasetStats);
+});
+
+// Serve SHAP/evaluation plot images
+app.use('/ml/plots', express.static(path.join(__dirname, 'ml', 'plots')));
+
 // ============================================================
 // ML ENGINE — 4-Model Ensemble Architecture
 // Model 1: Random Forest Classifier
@@ -430,6 +448,9 @@ let rfModel = null;   // Random Forest — loaded from ml/rf_model.json
 let xgbModel = null;  // XGBoost — loaded from ml/xgb_model.json
 let svmModel = null;  // SVM — loaded from ml/svm_model.json
 let lgbModel = null;  // LightGBM — loaded from ml/lgb_model.json
+let modelEvaluation = null;  // Confusion matrices + ROC data
+let datasetStats = null;     // Dataset statistics
+let shapData = null;         // SHAP feature importance data
 
 function loadModels() {
   const models = [
@@ -456,6 +477,19 @@ function loadModels() {
     console.warn('⚠️  No ML models found — will use fallback scoring only');
   } else {
     console.log(`✅ ${loaded}/4 models loaded for ensemble scoring`);
+  }
+
+  // Load analytics data files
+  const analyticsFiles = [
+    { name: 'model_evaluation', file: 'model_evaluation.json', setter: (d) => modelEvaluation = d },
+    { name: 'dataset_stats', file: 'dataset_stats.json', setter: (d) => datasetStats = d },
+    { name: 'shap_data', file: 'shap_data.json', setter: (d) => shapData = d },
+  ];
+  for (const { name, file, setter } of analyticsFiles) {
+    const filePath = path.join(__dirname, 'ml', file);
+    if (fs.existsSync(filePath)) {
+      setter(JSON.parse(fs.readFileSync(filePath, 'utf8')));
+    }
   }
 }
 

@@ -449,16 +449,307 @@ with open(lgb_path, 'w') as f:
 print(f"\n[OK] Saved: lgb_model.json ({os.path.getsize(lgb_path)/1024:.1f} KB)")
 
 
+# ══════════════════════════════════════════════════════════
+#  STEP 7: Model Evaluation Data (Confusion Matrix + ROC)
+# ══════════════════════════════════════════════════════════
+print("\n" + "-" * 60)
+print("  STEP 7: Generating Evaluation Data")
+print("-" * 60)
+
+from sklearn.metrics import confusion_matrix, roc_curve, auc
+
+models_eval = {
+    'Random Forest': {'y_pred': rf_pred, 'model': rf, 'scaled': False},
+    'XGBoost': {'y_pred': xgb_pred, 'model': xgb_model, 'scaled': False},
+    'SVM': {'y_pred': svm_pred, 'model': svm_model, 'scaled': True},
+    'LightGBM': {'y_pred': lgb_pred, 'model': lgb_model, 'scaled': False},
+}
+
+evaluation_data = {}
+for name, info in models_eval.items():
+    # Confusion matrix
+    cm = confusion_matrix(y_test, info['y_pred'])
+    tn, fp, fn, tp = cm.ravel()
+
+    # ROC curve
+    X_for_roc = X_test_s if info['scaled'] else X_test
+    if hasattr(info['model'], 'predict_proba'):
+        y_prob = info['model'].predict_proba(X_for_roc)[:, 1]
+    else:
+        y_prob = info['model'].decision_function(X_for_roc)
+    fpr, tpr, _ = roc_curve(y_test, y_prob)
+    roc_auc = auc(fpr, tpr)
+
+    evaluation_data[name] = {
+        'confusion_matrix': {'tn': int(tn), 'fp': int(fp), 'fn': int(fn), 'tp': int(tp)},
+        'roc': {
+            'fpr': [round(float(x), 6) for x in fpr],
+            'tpr': [round(float(x), 6) for x in tpr],
+            'auc': round(float(roc_auc), 4)
+        }
+    }
+    print(f"     {name}: AUC={roc_auc:.4f}  TP={tp} TN={tn} FP={fp} FN={fn}")
+
+eval_path = os.path.join(ML_DIR, 'model_evaluation.json')
+with open(eval_path, 'w') as f:
+    json.dump(evaluation_data, f)
+print(f"\n[OK] Saved: model_evaluation.json")
+
+
+# ══════════════════════════════════════════════════════════
+#  STEP 8: Dataset Statistics
+# ══════════════════════════════════════════════════════════
+print("\n" + "-" * 60)
+print("  STEP 8: Generating Dataset Statistics")
+print("-" * 60)
+
+feature_stats = {}
+for col in feature_cols:
+    vals = df[col].values.astype(float)
+    feature_stats[col] = {
+        'mean': round(float(np.mean(vals)), 4),
+        'std': round(float(np.std(vals)), 4),
+        'min': round(float(np.min(vals)), 4),
+        'max': round(float(np.max(vals)), 4),
+        'median': round(float(np.median(vals)), 4),
+    }
+
+# Correlation of each feature with target
+correlations = {}
+for col in feature_cols:
+    corr = float(np.corrcoef(df[col].values.astype(float), y)[0, 1])
+    correlations[col] = round(corr, 4)
+
+dataset_stats = {
+    'total_samples': int(len(df)),
+    'n_features': len(feature_cols),
+    'feature_names': feature_cols,
+    'class_distribution': {
+        'No ASD': int(np.sum(y == 0)),
+        'ASD': int(np.sum(y == 1))
+    },
+    'class_ratio': round(float(np.sum(y == 1)) / len(y) * 100, 1),
+    'feature_stats': feature_stats,
+    'correlations': correlations,
+    'gender_split': {
+        'male': int(df['gender'].sum()) if 'gender' in df.columns else 0,
+        'female': int(len(df) - df['gender'].sum()) if 'gender' in df.columns else 0,
+    },
+    'age_distribution': {
+        'mean': round(float(df['age'].mean()), 1),
+        'std': round(float(df['age'].std()), 1),
+        'min': round(float(df['age'].min()), 1),
+        'max': round(float(df['age'].max()), 1),
+        'bins': [],
+        'counts': []
+    },
+    'jaundice_rate': round(float(df['jaundice'].mean()) * 100, 1) if 'jaundice' in df.columns else 0,
+    'family_autism_rate': round(float(df['family_autism'].mean()) * 100, 1) if 'family_autism' in df.columns else 0,
+}
+
+# Age histogram bins
+age_counts, age_bins = np.histogram(df['age'].values, bins=10)
+dataset_stats['age_distribution']['bins'] = [round(float(b), 1) for b in age_bins]
+dataset_stats['age_distribution']['counts'] = [int(c) for c in age_counts]
+
+stats_path = os.path.join(ML_DIR, 'dataset_stats.json')
+with open(stats_path, 'w') as f:
+    json.dump(dataset_stats, f)
+print(f"[OK] Saved: dataset_stats.json")
+
+
+# ══════════════════════════════════════════════════════════
+#  STEP 9: SHAP Explainability
+# ══════════════════════════════════════════════════════════
+print("\n" + "-" * 60)
+print("  STEP 9: Generating SHAP Explainability Plots")
+print("-" * 60)
+
+plots_dir = os.path.join(ML_DIR, 'plots')
+os.makedirs(plots_dir, exist_ok=True)
+
+try:
+    import shap
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    # SHAP for Random Forest (representative tree model)
+    print("     Computing SHAP values for Random Forest...")
+    rf_explainer = shap.TreeExplainer(rf)
+    rf_shap_values = rf_explainer.shap_values(X_test)
+
+    # Handle both list and array returns, force 2D (n_samples, n_features)
+    if isinstance(rf_shap_values, list):
+        shap_vals = rf_shap_values[1]  # class 1 (ASD)
+    else:
+        shap_vals = rf_shap_values
+    # If 3D (n_samples, n_features, n_classes), select class 1
+    if shap_vals.ndim == 3:
+        shap_vals = shap_vals[:, :, 1] if shap_vals.shape[2] == 2 else shap_vals[:, :, 0]
+
+    # Human-readable feature labels for plots
+    aq_labels = {
+        'A1_Score': 'Sensory Sensitivity (A1)',
+        'A2_Score': 'Attention to Detail (A2)',
+        'A3_Score': 'Multitasking (A3)',
+        'A4_Score': 'Attention Switching (A4)',
+        'A5_Score': 'Communication (A5)',
+        'A6_Score': 'Social Awareness (A6)',
+        'A7_Score': 'Theory of Mind (A7)',
+        'A8_Score': 'Pattern Seeking (A8)',
+        'A9_Score': 'Facial Recognition (A9)',
+        'A10_Score': 'Social Intuition (A10)',
+        'age': 'Age',
+        'gender': 'Gender',
+        'jaundice': 'Jaundice at Birth',
+        'family_autism': 'Family ASD History',
+    }
+    plot_labels = [aq_labels.get(f, f) for f in feature_cols]
+    PLOT_SIZE = (10, 8)
+
+    def save_shap_plot(shap_values, X_data, labels, filename, plot_type='dot'):
+        plt.figure(figsize=PLOT_SIZE)
+        shap.summary_plot(shap_values, X_data, feature_names=labels,
+                          plot_type=plot_type, show=False)
+        plt.subplots_adjust(bottom=0.18)
+        plt.savefig(os.path.join(plots_dir, filename), dpi=120,
+                    bbox_inches='tight', pad_inches=0.4)
+        plt.close()
+        print(f"     [OK] Saved: plots/{filename}")
+
+    # SHAP Summary Plot
+    save_shap_plot(shap_vals, X_test, plot_labels, 'shap_summary.png')
+
+    # SHAP Bar Plot
+    save_shap_plot(shap_vals, X_test, plot_labels, 'shap_bar.png', plot_type='bar')
+
+    # SHAP for XGBoost
+    print("     Computing SHAP values for XGBoost...")
+    xgb_explainer = shap.TreeExplainer(xgb_model)
+    xgb_shap_values = xgb_explainer.shap_values(X_test)
+    if isinstance(xgb_shap_values, list):
+        xgb_shap_values = xgb_shap_values[1]
+    if xgb_shap_values.ndim == 3:
+        xgb_shap_values = xgb_shap_values[:, :, 1] if xgb_shap_values.shape[2] == 2 else xgb_shap_values[:, :, 0]
+
+    save_shap_plot(xgb_shap_values, X_test, plot_labels, 'shap_summary_xgb.png')
+
+    # SHAP for LightGBM
+    lgb_shap_vals = None
+    try:
+        print("     Computing SHAP values for LightGBM...")
+        lgb_explainer = shap.TreeExplainer(lgb_model)
+        lgb_shap_values_raw = lgb_explainer.shap_values(X_test)
+        if isinstance(lgb_shap_values_raw, list):
+            lgb_shap_vals = lgb_shap_values_raw[1]
+        else:
+            lgb_shap_vals = lgb_shap_values_raw
+        if lgb_shap_vals.ndim == 3:
+            lgb_shap_vals = lgb_shap_vals[:, :, 1] if lgb_shap_vals.shape[2] == 2 else lgb_shap_vals[:, :, 0]
+
+        save_shap_plot(lgb_shap_vals, X_test, plot_labels, 'shap_summary_lgb.png')
+        print("     [OK] Saved: plots/shap_summary_lgb.png")
+    except Exception as e:
+        print(f"     [SKIP] LightGBM SHAP plot failed: {e}")
+
+    # Save SHAP values as JSON for interactive charts
+    def safe_mean_shap(vals, fallback=None):
+        try:
+            v = np.array(vals, dtype=float)
+            if v.ndim == 2 and v.shape[1] == len(feature_cols):
+                return [round(float(np.abs(v[:, i]).mean()), 6) for i in range(len(feature_cols))]
+            arr = np.abs(v).mean(axis=0).flatten()
+            return [round(float(arr[i]), 6) for i in range(len(feature_cols))]
+        except Exception:
+            if fallback is not None:
+                return [round(float(x), 6) for x in fallback]
+            return [0.0] * len(feature_cols)
+
+    # SVM permutation importance (SVM has no tree-based feature importances)
+    print("     Computing permutation importance for SVM...")
+    from sklearn.inspection import permutation_importance
+    svm_perm = permutation_importance(svm_model, X_test_s, y_test, n_repeats=20, random_state=42, n_jobs=-1)
+    svm_imp = svm_perm.importances_mean
+    svm_imp_norm = svm_imp / max(svm_imp.sum(), 1e-10)
+
+    shap_data = {
+        'feature_names': feature_cols,
+        'rf_mean_shap': safe_mean_shap(shap_vals, importances),
+        'xgb_mean_shap': safe_mean_shap(xgb_shap_values, xgb_importances),
+        'svm_mean_importance': [round(float(x), 6) for x in svm_imp_norm],
+        'lgb_mean_shap': safe_mean_shap(lgb_shap_vals, lgb_importances_norm) if lgb_shap_vals is not None
+                         else [round(float(x), 6) for x in lgb_importances_norm],
+    }
+
+    shap_path = os.path.join(ML_DIR, 'shap_data.json')
+    with open(shap_path, 'w') as f:
+        json.dump(shap_data, f)
+    print(f"     [OK] Saved: shap_data.json")
+
+except ImportError:
+    print("     [SKIP] shap or matplotlib not installed — run: pip install shap matplotlib")
+    print("     (The app will still work, just without SHAP plots)")
+except Exception as e:
+    print(f"     [SKIP] SHAP generation failed: {e}")
+    print("     (The app will still work, just without SHAP plots)")
+    # Save fallback shap_data.json using feature importances
+    shap_data = {
+        'feature_names': feature_cols,
+        'rf_mean_shap': [round(float(x), 6) for x in importances],
+        'xgb_mean_shap': [round(float(x), 6) for x in xgb_importances],
+        'svm_mean_importance': [round(1.0 / len(feature_cols), 6)] * len(feature_cols),
+        'lgb_mean_shap': [round(float(x), 6) for x in lgb_importances_norm],
+    }
+    shap_path = os.path.join(ML_DIR, 'shap_data.json')
+    with open(shap_path, 'w') as f:
+        json.dump(shap_data, f)
+    print(f"     [OK] Saved: shap_data.json (fallback using feature importances)")
+
+
+# ── Feature Importance Comparison Plot ───────────────────
+try:
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(1, 3, figsize=(20, 7))
+    fig.suptitle('Feature Importance Comparison', fontsize=14, fontweight='bold')
+
+    for ax, (name, imps) in zip(axes, [
+        ('Random Forest', importances),
+        ('XGBoost', xgb_importances),
+        ('LightGBM', lgb_importances_norm)
+    ]):
+        sorted_i = np.argsort(imps)
+        ax.barh([plot_labels[i] for i in sorted_i], imps[sorted_i], color='#6366f1')
+        ax.set_title(name)
+        ax.set_xlabel('Importance')
+
+    plt.tight_layout(pad=1.5)
+    plt.savefig(os.path.join(plots_dir, 'feature_importance.png'), dpi=150, bbox_inches='tight', pad_inches=0.3)
+    plt.close()
+    print("     [OK] Saved: plots/feature_importance.png")
+except Exception as e:
+    print(f"     [SKIP] Feature importance plot failed: {e}")
+
+
 # ── Done ──────────────────────────────────────────────────
 print("\n" + "=" * 60)
 print("  ALL DONE!")
 print("=" * 60)
 print(f"""
-  Files created:
+  Model files:
     {rf_path}
     {xgb_path}
     {svm_path}
     {lgb_path}
+
+  Analytics files:
+    {eval_path}
+    {stats_path}
+    {os.path.join(ML_DIR, 'shap_data.json')}
+    {plots_dir}/
 
   Model 1 — Random Forest:  {rf_metrics['accuracy']*100:.1f}% accuracy, {rf.n_estimators} trees
   Model 2 — XGBoost:        {xgb_metrics['accuracy']*100:.1f}% accuracy, {xgb_model.n_estimators} trees
