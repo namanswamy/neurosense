@@ -418,36 +418,48 @@ app.get('/api/entries', requireAuth, async (req, res) => {
 });
 
 // ============================================================
-// ML ENGINE — Dual Model Architecture
-// Model 1: Random Forest Classifier (ASD Screening)
-// Model 2: Neural Network MLP (Severity Scoring)
+// ML ENGINE — 4-Model Ensemble Architecture
+// Model 1: Random Forest Classifier
+// Model 2: XGBoost Classifier
+// Model 3: SVM (RBF Kernel)
+// Model 4: LightGBM Classifier
 // Trained on: Kaggle Autism Screening Adult Dataset (AQ-10)
 // ============================================================
 
-let rfModel = null;  // Random Forest — loaded from ml/rf_model.json
-let nnModel = null;  // Neural Network — loaded from ml/nn_model.json
+let rfModel = null;   // Random Forest — loaded from ml/rf_model.json
+let xgbModel = null;  // XGBoost — loaded from ml/xgb_model.json
+let svmModel = null;  // SVM — loaded from ml/svm_model.json
+let lgbModel = null;  // LightGBM — loaded from ml/lgb_model.json
 
 function loadModels() {
-  const rfPath = path.join(__dirname, 'ml', 'rf_model.json');
-  const nnPath = path.join(__dirname, 'ml', 'nn_model.json');
+  const models = [
+    { name: 'Random Forest', file: 'rf_model.json', setter: (m) => rfModel = m, info: (m) => `${m.n_estimators} trees` },
+    { name: 'XGBoost', file: 'xgb_model.json', setter: (m) => xgbModel = m, info: (m) => `${m.n_estimators} trees` },
+    { name: 'SVM (RBF)', file: 'svm_model.json', setter: (m) => svmModel = m, info: (m) => `${m.support_vectors.length} support vectors` },
+    { name: 'LightGBM', file: 'lgb_model.json', setter: (m) => lgbModel = m, info: (m) => `${m.n_estimators} trees` },
+  ];
 
-  if (fs.existsSync(rfPath)) {
-    rfModel = JSON.parse(fs.readFileSync(rfPath, 'utf8'));
-    console.log(`✅ Model 1 loaded: Random Forest (${rfModel.n_estimators} trees, accuracy: ${rfModel.metrics.accuracy})`);
-  } else {
-    console.warn('⚠️  ml/rf_model.json not found — will use fallback scoring');
+  let loaded = 0;
+  for (const { name, file, setter, info } of models) {
+    const filePath = path.join(__dirname, 'ml', file);
+    if (fs.existsSync(filePath)) {
+      const model = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      setter(model);
+      console.log(`✅ Model loaded: ${name} (${info(model)}, accuracy: ${model.metrics.accuracy})`);
+      loaded++;
+    } else {
+      console.warn(`⚠️  ml/${file} not found — ${name} unavailable`);
+    }
   }
 
-  if (fs.existsSync(nnPath)) {
-    nnModel = JSON.parse(fs.readFileSync(nnPath, 'utf8'));
-    console.log(`✅ Model 2 loaded: Neural Network MLP (${nnModel.architecture.join('→')}, accuracy: ${nnModel.metrics.accuracy})`);
+  if (loaded === 0) {
+    console.warn('⚠️  No ML models found — will use fallback scoring only');
   } else {
-    console.warn('⚠️  ml/nn_model.json not found — will use fallback scoring');
+    console.log(`✅ ${loaded}/4 models loaded for ensemble scoring`);
   }
 }
 
 // ── Math helpers ──────────────────────────────────────────
-function relu(x) { return Math.max(0, x); }
 function sigmoid(x) { return 1 / (1 + Math.exp(-Math.max(-500, Math.min(500, x)))); }
 
 // ── Feature Mapping: NeuroSense → AQ-10 feature space ────
@@ -517,37 +529,123 @@ function predictRF(features) {
   };
 }
 
-// ── Model 2: Neural Network MLP Prediction ────────────────
-function predictNN(features) {
-  if (!nnModel) return null;
+// ── Model 2: XGBoost Prediction ───────────────────────────
+function traverseXGBTree(node, features) {
+  // Leaf node
+  if (node.leaf !== undefined) return node.leaf;
+  // Split node: "split" is feature name like "f0", "f1", etc.
+  const featureIdx = parseInt(node.split.replace('f', ''));
+  const val = features[featureIdx] || 0;
+  // XGBoost uses "yes" for <= threshold, "no" for > threshold
+  if (val < node.split_condition) {
+    // Go to "yes" child
+    const yesIdx = node.yes;
+    for (const child of node.children) {
+      if (child.nodeid === yesIdx) return traverseXGBTree(child, features);
+    }
+  } else {
+    // Go to "no" child
+    const noIdx = node.no;
+    for (const child of node.children) {
+      if (child.nodeid === noIdx) return traverseXGBTree(child, features);
+    }
+  }
+  return 0;
+}
 
-  let x = features.slice();
-  if (nnModel.scaler) {
-    x = x.map((v, i) => (v - nnModel.scaler.mean[i]) / nnModel.scaler.scale[i]);
+function predictXGB(features) {
+  if (!xgbModel) return null;
+
+  let sum = 0;
+  for (const tree of xgbModel.trees) {
+    sum += traverseXGBTree(tree, features);
   }
 
-  const layerActivations = [];
-  let h = x;
-  for (let i = 0; i < nnModel.layers.length; i++) {
-    const W = nnModel.layers[i].W;
-    const b = nnModel.layers[i].b;
-    const isOutput = i === nnModel.layers.length - 1;
-
-    h = W.map((row, j) => {
-      const sum = row.reduce((s, wij, k) => s + wij * (h[k] || 0), 0) + b[j];
-      return isOutput ? sigmoid(sum) : relu(sum);
-    });
-
-    layerActivations.push(h.reduce((a, b) => a + b, 0) / h.length);
-  }
-
+  // Apply sigmoid to get probability (binary classification with logistic objective)
+  const probability = sigmoid(sum);
   return {
-    score: h[0],
-    layerActivations: layerActivations
+    prediction: probability > 0.5 ? 'YES' : 'NO',
+    probability: probability,
+    confidence: Math.round(Math.abs(probability - 0.5) * 2 * 100 * 10) / 10
   };
 }
 
-// ── Main Processing Function (Dual Model) ─────────────────
+// ── Model 3: SVM (RBF Kernel) Prediction ──────────────────
+function predictSVM(features) {
+  if (!svmModel) return null;
+
+  // Standardize input using stored scaler
+  const x = features.map((v, i) => (v - svmModel.scaler.mean[i]) / svmModel.scaler.scale[i]);
+
+  // RBF kernel: K(x, sv) = exp(-gamma * ||x - sv||^2)
+  const gamma = svmModel.gamma;
+  const supportVectors = svmModel.support_vectors;
+  const dualCoef = svmModel.dual_coef[0]; // shape: [1, n_support_vectors]
+
+  let decision = svmModel.intercept[0];
+  for (let i = 0; i < supportVectors.length; i++) {
+    let sqDist = 0;
+    for (let j = 0; j < x.length; j++) {
+      const diff = x[j] - supportVectors[i][j];
+      sqDist += diff * diff;
+    }
+    const kernelVal = Math.exp(-gamma * sqDist);
+    decision += dualCoef[i] * kernelVal;
+  }
+
+  // Convert decision value to probability using Platt scaling approximation
+  const probability = sigmoid(decision);
+  return {
+    prediction: decision > 0 ? 'YES' : 'NO',
+    probability: probability,
+    confidence: Math.round(Math.min(Math.abs(decision), 3) / 3 * 100 * 10) / 10
+  };
+}
+
+// ── Model 4: LightGBM Prediction ─────────────────────────
+function traverseLGBTree(node, features) {
+  // Leaf node
+  if (node.leaf_value !== undefined) return node.leaf_value;
+
+  // Split node
+  const featureIdx = node.split_feature;
+  const val = features[featureIdx] || 0;
+  const threshold = node.threshold;
+
+  // LightGBM default: left child for <= threshold
+  const decision_type = node.decision_type || '<=';
+  let goLeft;
+  if (decision_type === '<=') {
+    goLeft = val <= threshold;
+  } else {
+    goLeft = val < threshold;
+  }
+
+  if (goLeft) {
+    return traverseLGBTree(node.left_child, features);
+  } else {
+    return traverseLGBTree(node.right_child, features);
+  }
+}
+
+function predictLGB(features) {
+  if (!lgbModel) return null;
+
+  let sum = 0;
+  for (const treeInfo of lgbModel.trees) {
+    sum += traverseLGBTree(treeInfo.tree_structure, features);
+  }
+
+  // Apply sigmoid to get probability (binary classification)
+  const probability = sigmoid(sum);
+  return {
+    prediction: probability > 0.5 ? 'YES' : 'NO',
+    probability: probability,
+    confidence: Math.round(Math.abs(probability - 0.5) * 2 * 100 * 10) / 10
+  };
+}
+
+// ── Main Processing Function (4-Model Ensemble) ──────────
 function processWithDualModels(responses, healthProfile, userInfo) {
   const sectionScores = {};
   responses.forEach(r => {
@@ -575,30 +673,43 @@ function processWithDualModels(responses, healthProfile, userInfo) {
   };
 
   const aq10Features = mapToAQ10Features(sensory, domains, healthProfile, userInfo);
+
+  // Run all 4 models
   const rfResult = predictRF(aq10Features);
-  const nnResult = predictNN(aq10Features);
+  const xgbResult = predictXGB(aq10Features);
+  const svmResult = predictSVM(aq10Features);
+  const lgbResult = predictLGB(aq10Features);
 
   const directScore = (
     Object.values(sensory).reduce((a, b) => a + b, 0) / 7 * 0.4 +
     Object.values(domains).reduce((a, b) => a + b, 0) / 4 * 0.6
   ) / 10 * 100;
 
+  // Soft-voting ensemble: collect all available model probabilities
+  const modelResults = [
+    { result: rfResult, weight: 0.25, name: 'rf' },
+    { result: xgbResult, weight: 0.25, name: 'xgb' },
+    { result: svmResult, weight: 0.20, name: 'svm' },
+    { result: lgbResult, weight: 0.20, name: 'lgb' },
+  ].filter(m => m.result !== null);
+
   let autism_score;
   let modelMode;
 
-  if (rfResult && nnResult) {
-    autism_score = Math.round((
-      rfResult.probability * 100 * 0.4 +
-      nnResult.score * 100 * 0.4 +
-      directScore * 0.2
-    ) * 10) / 10;
-    modelMode = 'dual-model';
-  } else if (nnResult) {
-    autism_score = Math.round((nnResult.score * 100 * 0.6 + directScore * 0.4) * 10) / 10;
-    modelMode = 'nn-only';
-  } else if (rfResult) {
-    autism_score = Math.round((rfResult.probability * 100 * 0.6 + directScore * 0.4) * 10) / 10;
-    modelMode = 'rf-only';
+  if (modelResults.length >= 2) {
+    // Redistribute weights proportionally among available models
+    const totalMLWeight = modelResults.reduce((s, m) => s + m.weight, 0);
+    const mlWeight = 0.9; // 90% ML, 10% direct
+    let mlScore = 0;
+    for (const m of modelResults) {
+      const normalizedWeight = (m.weight / totalMLWeight) * mlWeight;
+      mlScore += m.result.probability * 100 * normalizedWeight;
+    }
+    autism_score = Math.round((mlScore + directScore * 0.1) * 10) / 10;
+    modelMode = modelResults.length === 4 ? 'quad-model' : `ensemble-${modelResults.length}`;
+  } else if (modelResults.length === 1) {
+    autism_score = Math.round((modelResults[0].result.probability * 100 * 0.6 + directScore * 0.4) * 10) / 10;
+    modelMode = `${modelResults[0].name}-only`;
   } else {
     autism_score = Math.round(directScore * 10) / 10;
     modelMode = 'fallback';
@@ -632,10 +743,11 @@ function processWithDualModels(responses, healthProfile, userInfo) {
   else if (sensoryVar > 4) pattern_type = 'Mixed Responsivity (Variable)';
   else pattern_type = 'Moderate / Stable Processing';
 
+  // Confidence: average confidence across all available models
   let confidence;
-  if (rfResult && nnResult) {
-    const nnConf = Math.abs(nnResult.score - 0.5) * 2 * 100;
-    confidence = Math.round((rfResult.confidence * 0.5 + nnConf * 0.3 + 20) * 10) / 10;
+  if (modelResults.length >= 2) {
+    const avgConf = modelResults.reduce((s, m) => s + m.result.confidence, 0) / modelResults.length;
+    confidence = Math.round((avgConf * 0.7 + 20 + modelResults.length * 2) * 10) / 10;
   } else {
     confidence = Math.min(92, 70 + responses.length * 0.3);
   }
@@ -643,8 +755,13 @@ function processWithDualModels(responses, healthProfile, userInfo) {
 
   const recommendations = generateDetailedRecommendations(sensory, domains, autism_score, autism_level, pattern_type, healthProfile);
 
+  const modelNames = modelResults.map(m => {
+    const names = { rf: 'Random Forest', xgb: 'XGBoost', svm: 'SVM', lgb: 'LightGBM' };
+    return names[m.name];
+  }).join(' + ');
+
   const detailed_report = {
-    summary: `Based on comprehensive analysis of ${responses.length} questionnaire responses using ${modelMode === 'dual-model' ? 'dual AI models (Random Forest + Neural Network)' : modelMode === 'fallback' ? 'direct scoring' : 'trained ML model'}, the NeuroSense engine has computed an autism spectrum score of ${autism_score}/100.`,
+    summary: `Based on comprehensive analysis of ${responses.length} questionnaire responses using ${modelResults.length >= 2 ? modelResults.length + ' AI models (' + modelNames + ')' : modelMode === 'fallback' ? 'direct scoring' : 'trained ML model'}, the NeuroSense engine has computed an autism spectrum score of ${autism_score}/100.`,
     sensory_profile: Object.entries(sensory).map(([k, v]) => ({
       channel: k.charAt(0).toUpperCase() + k.slice(1),
       score: Math.round(v * 10) / 10,
@@ -656,17 +773,15 @@ function processWithDualModels(responses, healthProfile, userInfo) {
       score: Math.round(v * 10) / 10,
       severity: v >= 7 ? 'Significant' : v >= 5 ? 'Moderate' : v >= 3 ? 'Mild' : 'Minimal'
     })),
-    network_activations: nnResult ? {
-      layer_activations: nnResult.layerActivations.map(a => Math.round(a * 1000) / 1000),
-      output_raw: Math.round(nnResult.score * 1000) / 1000,
-      architecture: nnModel.architecture
-    } : {
-      layer_activations: [0, 0, 0],
-      output_raw: directScore / 100,
-      architecture: [14, 20, 12, 8, 1]
+    model_predictions: {
+      rf: rfResult ? { probability: Math.round(rfResult.probability * 1000) / 1000, prediction: rfResult.prediction, confidence: rfResult.confidence } : null,
+      xgb: xgbResult ? { probability: Math.round(xgbResult.probability * 1000) / 1000, prediction: xgbResult.prediction, confidence: xgbResult.confidence } : null,
+      svm: svmResult ? { probability: Math.round(svmResult.probability * 1000) / 1000, prediction: svmResult.prediction, confidence: svmResult.confidence } : null,
+      lgb: lgbResult ? { probability: Math.round(lgbResult.probability * 1000) / 1000, prediction: lgbResult.prediction, confidence: lgbResult.confidence } : null,
     },
     model_info: {
       mode: modelMode,
+      models_loaded: modelResults.length,
       rf: rfResult ? {
         type: 'Random Forest Classifier',
         n_estimators: rfModel.n_estimators,
@@ -677,12 +792,34 @@ function processWithDualModels(responses, healthProfile, userInfo) {
         dataset: rfModel.training_info.dataset,
         feature_importances: rfModel.feature_importances
       } : null,
-      nn: nnResult ? {
-        type: 'Neural Network MLP',
-        architecture: nnModel.architecture,
-        accuracy: nnModel.metrics.accuracy,
-        raw_score: Math.round(nnResult.score * 1000) / 1000,
-        dataset: nnModel.training_info.dataset
+      xgb: xgbResult ? {
+        type: 'XGBoost Classifier',
+        n_estimators: xgbModel.n_estimators,
+        accuracy: xgbModel.metrics.accuracy,
+        prediction: xgbResult.prediction,
+        probability: Math.round(xgbResult.probability * 1000) / 1000,
+        confidence: xgbResult.confidence,
+        dataset: xgbModel.training_info.dataset,
+        feature_importances: xgbModel.feature_importances
+      } : null,
+      svm: svmResult ? {
+        type: 'SVM (RBF Kernel)',
+        n_support_vectors: svmModel.support_vectors.length,
+        accuracy: svmModel.metrics.accuracy,
+        prediction: svmResult.prediction,
+        probability: Math.round(svmResult.probability * 1000) / 1000,
+        confidence: svmResult.confidence,
+        dataset: svmModel.training_info.dataset
+      } : null,
+      lgb: lgbResult ? {
+        type: 'LightGBM Classifier',
+        n_estimators: lgbModel.n_estimators,
+        accuracy: lgbModel.metrics.accuracy,
+        prediction: lgbResult.prediction,
+        probability: Math.round(lgbResult.probability * 1000) / 1000,
+        confidence: lgbResult.confidence,
+        dataset: lgbModel.training_info.dataset,
+        feature_importances: lgbModel.feature_importances
       } : null,
       dataset: 'Kaggle AQ-10 Adult Autism Screening (704 records)',
       feature_mapping: '11 NeuroSense domain scores → 14 AQ-10 features'

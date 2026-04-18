@@ -1233,7 +1233,7 @@
       </p>
     </div>
     <div class="auth-footer">
-      <span>Powered by Neural Network ML</span>
+      <span>Powered by 4-Model ML Ensemble</span>
       <span class="auth-footer-dot"></span>
       <span>Research-Grade Analysis</span>
     </div>
@@ -1271,7 +1271,7 @@
       </p>
     </div>
     <div class="auth-footer">
-      <span>Powered by Neural Network ML</span>
+      <span>Powered by 4-Model ML Ensemble</span>
       <span class="auth-footer-dot"></span>
       <span>Research-Grade Analysis</span>
     </div>
@@ -2354,7 +2354,7 @@
           <div class="rep-meta-item"><strong>Risk:</strong> ${ML.risk_category}</div>
           <div class="rep-meta-item"><strong>Pattern:</strong> ${ML.pattern_type}</div>
           <div class="rep-meta-item"><strong>Confidence:</strong> ${ML.confidence ? parseFloat(ML.confidence).toFixed(1) + '%' : 'N/A'}</div>
-          <div class="rep-meta-item"><strong>Model:</strong> ${r.model_info?.mode === 'dual-model' ? 'RF + MLP (Dual)' : r.model_info?.mode === 'nn-only' ? 'MLP Neural Net' : r.model_info?.mode === 'rf-only' ? 'Random Forest' : 'Direct Scoring'}</div>
+          <div class="rep-meta-item"><strong>Model:</strong> ${r.model_info?.mode === 'quad-model' ? 'RF + XGB + SVM + LGBM' : r.model_info?.mode?.startsWith('ensemble') ? r.model_info.models_loaded + '-Model Ensemble' : r.model_info?.mode === 'fallback' ? 'Direct Scoring' : r.model_info?.mode || 'Direct Scoring'}</div>
         </div>
       </div>
 
@@ -2363,7 +2363,7 @@
         <a class="rep-toc-item" href="#rep-summary" onclick="event.preventDefault();document.getElementById('rep-summary').scrollIntoView({behavior:'smooth'})">Summary</a>
         <a class="rep-toc-item" href="#rep-sensory" onclick="event.preventDefault();document.getElementById('rep-sensory').scrollIntoView({behavior:'smooth'})">Sensory Profile</a>
         <a class="rep-toc-item" href="#rep-domains" onclick="event.preventDefault();document.getElementById('rep-domains').scrollIntoView({behavior:'smooth'})">Domains</a>
-        <a class="rep-toc-item" href="#rep-network" onclick="event.preventDefault();document.getElementById('rep-network').scrollIntoView({behavior:'smooth'})">Neural Network</a>
+        <a class="rep-toc-item" href="#rep-predictions" onclick="event.preventDefault();document.getElementById('rep-predictions').scrollIntoView({behavior:'smooth'})">Model Predictions</a>
         <a class="rep-toc-item" href="#rep-models" onclick="event.preventDefault();document.getElementById('rep-models').scrollIntoView({behavior:'smooth'})">AI Models</a>
       </div>`;
 
@@ -2454,42 +2454,49 @@
       h += '</div></div></div>';
     }
 
-    // Neural Network section
-    if (r.network_activations) {
-      const a = r.network_activations;
-      const arch = a.architecture || [14, 20, 12, 8, 1];
-      const layerNames = ['Input', ...arch.slice(1, -1).map((_, i) => 'Hidden ' + (i + 1)), 'Output'];
-      const layerActs = ['features', ...Array(arch.length - 2).fill('ReLU'), 'Sigmoid'];
+    // Model Predictions comparison section
+    if (r.model_predictions) {
+      const mp = r.model_predictions;
+      const modelDefs = [
+        { key: 'rf', name: 'Random Forest', icon: '🌲', color: 'var(--green)', bg: 'var(--greeng)' },
+        { key: 'xgb', name: 'XGBoost', icon: '⚡', color: 'var(--cyan)', bg: 'var(--cyang)' },
+        { key: 'svm', name: 'SVM (RBF)', icon: '🎯', color: 'var(--violet)', bg: 'var(--violetg)' },
+        { key: 'lgb', name: 'LightGBM', icon: '🔮', color: 'var(--teal)', bg: 'var(--tealg)' },
+      ];
 
-      h += `<div class="rep-section open" id="rep-network">
+      h += `<div class="rep-section open" id="rep-predictions">
         <div class="rep-sec-hdr" onclick="this.parentElement.classList.toggle('open');this.parentElement.querySelector('.rep-sec-body').style.display=this.parentElement.classList.contains('open')?'block':'none'">
           <div class="rep-sec-icon" style="background:var(--greeng);color:var(--green)">🤖</div>
-          <div class="rep-sec-title">Neural Network Architecture</div>
+          <div class="rep-sec-title">Model Predictions Comparison</div>
           <div class="rep-sec-arrow">▼</div>
         </div>
         <div class="rep-sec-body">
-          <div class="rep-nn">`;
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">`;
 
-      arch.forEach((size, i) => {
-        const isOutput = i === arch.length - 1;
-        const act = a.layer_activations?.[i - 1];
-        h += `${i > 0 ? '<div class="rep-nn-conn"></div>' : ''}
-            <div class="rep-nn-layer">
-              <div class="rep-nn-box"${isOutput ? ' style="border-color:var(--cyan)"' : ''}>
-                <div class="rep-nn-box-lbl">${layerNames[i]}</div>
-                <div class="rep-nn-box-val">${isOutput ? (a.output_raw?.toFixed(3) || size) : size}</div>
-                <div class="rep-nn-box-sz">${layerActs[i]}</div>
+      modelDefs.forEach(md => {
+        const pred = mp[md.key];
+        if (pred) {
+          const probPct = (pred.probability * 100).toFixed(1);
+          const predColor = pred.prediction === 'YES' ? 'var(--red)' : 'var(--green)';
+          h += `<div style="background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:16px;text-align:center">
+            <div style="font-size:24px;margin-bottom:6px">${md.icon}</div>
+            <div style="font-weight:700;color:var(--t1);font-size:14px">${md.name}</div>
+            <div style="margin:12px 0">
+              <div style="width:100%;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden">
+                <div style="width:${probPct}%;height:100%;background:${md.color};border-radius:4px;transition:width 0.5s"></div>
               </div>
-              ${i > 0 && act !== undefined ? `<div style="font-size:10px;color:var(--t3);margin-top:4px">avg: ${act.toFixed(3)}</div>` : ''}
-            </div>`;
+            </div>
+            <div style="font-size:22px;font-weight:800;color:${md.color}">${probPct}%</div>
+            <div style="font-size:12px;color:${predColor};font-weight:600;margin-top:4px">${pred.prediction}</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:6px">Confidence: ${pred.confidence}%</div>
+          </div>`;
+        }
       });
 
       h += `</div>
-          <div class="rep-meta-strip" style="justify-content:center">
-            <div class="rep-meta-item"><strong>Architecture:</strong> Multi-Layer Perceptron</div>
-            <div class="rep-meta-item"><strong>Layers:</strong> ${arch.join(' → ')}</div>
-            <div class="rep-meta-item"><strong>Activations:</strong> ReLU + Sigmoid</div>
-            <div class="rep-meta-item"><strong>Training:</strong> ${r.model_info?.nn ? 'Kaggle AQ-10 Dataset' : 'Fallback Mode'}</div>
+          <div class="rep-meta-strip" style="justify-content:center;margin-top:14px">
+            <div class="rep-meta-item"><strong>Ensemble:</strong> Soft Voting (Weighted Average)</div>
+            <div class="rep-meta-item"><strong>Models Active:</strong> ${Object.values(mp).filter(v => v).length}/4</div>
           </div>
         </div>
       </div>`;
@@ -2507,48 +2514,42 @@
         <div class="rep-sec-body">
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">`;
 
-      // RF Model card
-      if (mi.rf) {
-        h += `<div style="background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:20px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-            <div style="width:36px;height:36px;border-radius:8px;background:var(--greeng);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:18px">🌲</div>
-            <div>
-              <div style="font-weight:700;color:var(--t1)">Random Forest</div>
-              <div style="font-size:12px;color:var(--t3)">Model 1 — ASD Classifier</div>
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
-            <div style="color:var(--t3)">Trees:</div><div style="color:var(--t1);font-weight:600">${mi.rf.n_estimators}</div>
-            <div style="color:var(--t3)">Accuracy:</div><div style="color:var(--green);font-weight:600">${(mi.rf.accuracy * 100).toFixed(1)}%</div>
-            <div style="color:var(--t3)">Prediction:</div><div style="color:${mi.rf.prediction === 'YES' ? 'var(--red)' : 'var(--green)'};font-weight:600">${mi.rf.prediction}</div>
-            <div style="color:var(--t3)">Probability:</div><div style="color:var(--t1);font-weight:600">${(mi.rf.probability * 100).toFixed(1)}%</div>
-          </div>
-          <div style="margin-top:12px;font-size:11px;color:var(--t3)">Dataset: ${mi.rf.dataset}</div>
-        </div>`;
-      }
+      // Model cards for all 4 models
+      const modelCardDefs = [
+        { key: 'rf', name: 'Random Forest', subtitle: 'Model 1 — Committee Voting', icon: '🌲', iconBg: 'var(--greeng)', iconColor: 'var(--green)',
+          details: (m) => `<div style="color:var(--t3)">Trees:</div><div style="color:var(--t1);font-weight:600">${m.n_estimators}</div>` },
+        { key: 'xgb', name: 'XGBoost', subtitle: 'Model 2 — Gradient Boosting', icon: '⚡', iconBg: 'var(--cyang)', iconColor: 'var(--cyan)',
+          details: (m) => `<div style="color:var(--t3)">Trees:</div><div style="color:var(--t1);font-weight:600">${m.n_estimators}</div>` },
+        { key: 'svm', name: 'SVM (RBF Kernel)', subtitle: 'Model 3 — Boundary Classifier', icon: '🎯', iconBg: 'var(--violetg)', iconColor: 'var(--violet)',
+          details: (m) => `<div style="color:var(--t3)">Support Vectors:</div><div style="color:var(--t1);font-weight:600">${m.n_support_vectors}</div>` },
+        { key: 'lgb', name: 'LightGBM', subtitle: 'Model 4 — Light Gradient Boosting', icon: '🔮', iconBg: 'var(--tealg)', iconColor: 'var(--teal)',
+          details: (m) => `<div style="color:var(--t3)">Trees:</div><div style="color:var(--t1);font-weight:600">${m.n_estimators}</div>` },
+      ];
 
-      // NN Model card
-      if (mi.nn) {
-        h += `<div style="background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:20px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-            <div style="width:36px;height:36px;border-radius:8px;background:var(--violetg);color:var(--violet);display:flex;align-items:center;justify-content:center;font-size:18px">🧠</div>
-            <div>
-              <div style="font-weight:700;color:var(--t1)">Neural Network MLP</div>
-              <div style="font-size:12px;color:var(--t3)">Model 2 — Severity Scorer</div>
+      modelCardDefs.forEach(cd => {
+        const m = mi[cd.key];
+        if (m) {
+          h += `<div style="background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:20px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <div style="width:36px;height:36px;border-radius:8px;background:${cd.iconBg};color:${cd.iconColor};display:flex;align-items:center;justify-content:center;font-size:18px">${cd.icon}</div>
+              <div>
+                <div style="font-weight:700;color:var(--t1)">${cd.name}</div>
+                <div style="font-size:12px;color:var(--t3)">${cd.subtitle}</div>
+              </div>
             </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
-            <div style="color:var(--t3)">Architecture:</div><div style="color:var(--t1);font-weight:600">${mi.nn.architecture.join('→')}</div>
-            <div style="color:var(--t3)">Accuracy:</div><div style="color:var(--green);font-weight:600">${(mi.nn.accuracy * 100).toFixed(1)}%</div>
-            <div style="color:var(--t3)">Raw Score:</div><div style="color:var(--cyan);font-weight:600">${mi.nn.raw_score}</div>
-            <div style="color:var(--t3)">Activations:</div><div style="color:var(--t1);font-weight:600">ReLU + Sigmoid</div>
-          </div>
-          <div style="margin-top:12px;font-size:11px;color:var(--t3)">Dataset: ${mi.nn.dataset}</div>
-        </div>`;
-      }
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+              ${cd.details(m)}
+              <div style="color:var(--t3)">Accuracy:</div><div style="color:var(--green);font-weight:600">${(m.accuracy * 100).toFixed(1)}%</div>
+              <div style="color:var(--t3)">Prediction:</div><div style="color:${m.prediction === 'YES' ? 'var(--red)' : 'var(--green)'};font-weight:600">${m.prediction}</div>
+              <div style="color:var(--t3)">Probability:</div><div style="color:var(--t1);font-weight:600">${(m.probability * 100).toFixed(1)}%</div>
+            </div>
+            <div style="margin-top:12px;font-size:11px;color:var(--t3)">Dataset: ${m.dataset}</div>
+          </div>`;
+        }
+      });
 
       // Fallback card when no trained models
-      if (!mi.rf && !mi.nn) {
+      if (!mi.rf && !mi.xgb && !mi.svm && !mi.lgb) {
         h += `<div style="background:var(--bg2);border:1px solid var(--amberg);border-radius:12px;padding:20px;grid-column:1/-1">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
             <div style="width:36px;height:36px;border-radius:8px;background:var(--amberg);color:var(--amber);display:flex;align-items:center;justify-content:center;font-size:18px">⚠️</div>
@@ -2558,15 +2559,14 @@
             </div>
           </div>
           <div style="font-size:12px;color:var(--t3);line-height:1.5">
-            To enable AI models: download the Kaggle dataset, run the Python training scripts, then restart the server.<br>
-            See <code>ml/train_rf_classifier.py</code> and <code>ml/train_nn_regressor.py</code> for instructions.
+            To enable AI models: run <code>cd ml && pip install -r requirements.txt && python setup_and_train.py</code> then restart the server.
           </div>
         </div>`;
       }
 
       h += `</div>
           <div class="rep-meta-strip" style="justify-content:center;margin-top:16px">
-            <div class="rep-meta-item"><strong>Mode:</strong> ${mi.mode === 'dual-model' ? 'Dual Model (RF + NN)' : mi.mode === 'fallback' ? 'Fallback (Direct)' : mi.mode}</div>
+            <div class="rep-meta-item"><strong>Mode:</strong> ${mi.mode === 'quad-model' ? '4-Model Ensemble' : mi.mode === 'fallback' ? 'Fallback (Direct)' : mi.models_loaded + '-Model Ensemble'}</div>
             <div class="rep-meta-item"><strong>Features:</strong> ${mi.feature_mapping}</div>
             <div class="rep-meta-item"><strong>Dataset:</strong> ${mi.dataset}</div>
           </div>

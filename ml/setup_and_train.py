@@ -1,7 +1,7 @@
 """
 ============================================================
 NeuroSense — One-Click ML Setup & Training Script
-Run this single file to download dataset + train both models
+Train 4 models: Random Forest, XGBoost, SVM, LightGBM
 ============================================================
 Usage:
     cd ml
@@ -19,17 +19,19 @@ import glob
 
 # ── Step 0: Check dependencies ────────────────────────────
 print("=" * 60)
-print("  NeuroSense ML — Setup & Training")
+print("  NeuroSense ML — Setup & Training (4-Model Ensemble)")
 print("=" * 60)
 
 try:
     import pandas as pd
     import numpy as np
     from sklearn.ensemble import RandomForestClassifier
-    from sklearn.neural_network import MLPClassifier
+    from sklearn.svm import SVC
     from sklearn.model_selection import train_test_split, cross_val_score
-    from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
     from sklearn.preprocessing import StandardScaler
+    import xgboost as xgb
+    import lightgbm as lgb
     print("\n[OK] All dependencies found")
 except ImportError as e:
     print(f"\n[ERROR] Missing dependency: {e}")
@@ -205,46 +207,49 @@ y = df['target'].values.astype(int)
 print(f"[OK] Features: {len(feature_cols)} -> {feature_cols}")
 print(f"     Class distribution: NO={np.sum(y==0)}  YES={np.sum(y==1)}")
 
+# Calculate class weight ratio for imbalanced handling
+pos_weight = np.sum(y == 0) / max(np.sum(y == 1), 1)
+print(f"     Class weight ratio (neg/pos): {pos_weight:.2f}")
+
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 print(f"     Train: {len(X_train)}  Test: {len(X_test)}")
 
-# ── Step 3: Train Random Forest ───────────────────────────
-print("\n" + "-" * 60)
-print("  STEP 3: Training Model 1 — Random Forest Classifier")
-print("-" * 60)
+# Fit scaler (needed for SVM)
+scaler = StandardScaler()
+X_train_s = scaler.fit_transform(X_train)
+X_test_s = scaler.transform(X_test)
 
-rf = RandomForestClassifier(
-    n_estimators=50, max_depth=8, min_samples_split=5,
-    min_samples_leaf=2, random_state=42, n_jobs=-1
-)
-rf.fit(X_train, y_train)
 
-rf_pred = rf.predict(X_test)
-rf_acc = accuracy_score(y_test, rf_pred)
-rf_prec = precision_score(y_test, rf_pred, zero_division=0)
-rf_rec = recall_score(y_test, rf_pred, zero_division=0)
-rf_f1 = f1_score(y_test, rf_pred, zero_division=0)
-rf_cv = cross_val_score(rf, X, y, cv=5, scoring='accuracy')
+def print_metrics(name, y_true, y_pred, cv_scores):
+    acc = accuracy_score(y_true, y_pred)
+    prec = precision_score(y_true, y_pred, zero_division=0)
+    rec = recall_score(y_true, y_pred, zero_division=0)
+    f1 = f1_score(y_true, y_pred, zero_division=0)
+    print(f"[OK] {name} — Training complete")
+    print(f"     Accuracy:  {acc:.4f}")
+    print(f"     Precision: {prec:.4f}")
+    print(f"     Recall:    {rec:.4f}")
+    print(f"     F1 Score:  {f1:.4f}")
+    print(f"     Cross-val: {cv_scores.mean():.4f} (+/- {cv_scores.std():.4f})")
+    return {'accuracy': round(acc, 4), 'precision': round(prec, 4),
+            'recall': round(rec, 4), 'f1': round(f1, 4),
+            'cv_mean': round(float(cv_scores.mean()), 4),
+            'cv_std': round(float(cv_scores.std()), 4)}
 
-print(f"[OK] Training complete")
-print(f"     Accuracy:  {rf_acc:.4f}")
-print(f"     Precision: {rf_prec:.4f}")
-print(f"     Recall:    {rf_rec:.4f}")
-print(f"     F1 Score:  {rf_f1:.4f}")
-print(f"     Cross-val: {rf_cv.mean():.4f} (+/- {rf_cv.std():.4f})")
 
-# Top features
-importances = rf.feature_importances_
-sorted_idx = np.argsort(importances)[::-1]
-print(f"\n     Top Features:")
-for i in range(min(5, len(feature_cols))):
-    idx = sorted_idx[i]
-    bar = "#" * int(importances[idx] * 40)
-    print(f"       {feature_cols[idx]:>15}: {importances[idx]:.4f} {bar}")
+training_info = {
+    'dataset': 'Autism Screening on Adults (Kaggle)',
+    'dataset_url': 'https://www.kaggle.com/datasets/andrewmvd/autism-screening-on-adults',
+    'total_samples': len(X),
+    'train_samples': len(X_train),
+    'test_samples': len(X_test),
+    'n_features': len(feature_cols)
+}
 
-# Export RF
+
+# ── Helper: Export sklearn tree ───────────────────────────
 def export_tree(estimator):
     tree = estimator.tree_
     nodes = []
@@ -258,6 +263,31 @@ def export_tree(estimator):
         })
     return nodes
 
+
+# ══════════════════════════════════════════════════════════
+#  MODEL 1: Random Forest Classifier
+# ══════════════════════════════════════════════════════════
+print("\n" + "-" * 60)
+print("  STEP 3: Training Model 1 — Random Forest Classifier")
+print("-" * 60)
+
+rf = RandomForestClassifier(
+    n_estimators=50, max_depth=8, min_samples_split=5,
+    min_samples_leaf=2, random_state=42, n_jobs=-1
+)
+rf.fit(X_train, y_train)
+rf_pred = rf.predict(X_test)
+rf_cv = cross_val_score(rf, X, y, cv=5, scoring='accuracy')
+rf_metrics = print_metrics("Random Forest", y_test, rf_pred, rf_cv)
+
+importances = rf.feature_importances_
+sorted_idx = np.argsort(importances)[::-1]
+print(f"\n     Top Features:")
+for i in range(min(5, len(feature_cols))):
+    idx = sorted_idx[i]
+    bar = "#" * int(importances[idx] * 40)
+    print(f"       {feature_cols[idx]:>15}: {importances[idx]:.4f} {bar}")
+
 rf_json = {
     'model_type': 'RandomForestClassifier',
     'n_estimators': rf.n_estimators,
@@ -265,22 +295,8 @@ rf_json = {
     'feature_names': feature_cols,
     'feature_importances': [round(float(x), 6) for x in importances],
     'trees': [export_tree(est) for est in rf.estimators_],
-    'metrics': {
-        'accuracy': round(rf_acc, 4),
-        'precision': round(rf_prec, 4),
-        'recall': round(rf_rec, 4),
-        'f1': round(rf_f1, 4),
-        'cv_mean': round(float(rf_cv.mean()), 4),
-        'cv_std': round(float(rf_cv.std()), 4)
-    },
-    'training_info': {
-        'dataset': 'Autism Screening on Adults (Kaggle)',
-        'dataset_url': 'https://www.kaggle.com/datasets/andrewmvd/autism-screening-on-adults',
-        'total_samples': len(X),
-        'train_samples': len(X_train),
-        'test_samples': len(X_test),
-        'n_features': len(feature_cols)
-    }
+    'metrics': rf_metrics,
+    'training_info': training_info
 }
 
 rf_path = os.path.join(ML_DIR, 'rf_model.json')
@@ -288,93 +304,150 @@ with open(rf_path, 'w') as f:
     json.dump(rf_json, f)
 print(f"\n[OK] Saved: rf_model.json ({os.path.getsize(rf_path)/1024:.1f} KB)")
 
-# ── Step 4: Train Neural Network ──────────────────────────
+
+# ══════════════════════════════════════════════════════════
+#  MODEL 2: XGBoost Classifier
+# ══════════════════════════════════════════════════════════
 print("\n" + "-" * 60)
-print("  STEP 4: Training Model 2 — Neural Network MLP")
+print("  STEP 4: Training Model 2 — XGBoost Classifier")
 print("-" * 60)
 
-scaler = StandardScaler()
-X_train_s = scaler.fit_transform(X_train)
-X_test_s = scaler.transform(X_test)
-
-mlp = MLPClassifier(
-    hidden_layer_sizes=(20, 12, 8), activation='relu', solver='adam',
-    learning_rate='adaptive', learning_rate_init=0.001,
-    max_iter=2000, random_state=42, early_stopping=True,
-    validation_fraction=0.15, n_iter_no_change=20, verbose=False
+xgb_model = xgb.XGBClassifier(
+    n_estimators=100, max_depth=6, learning_rate=0.1,
+    scale_pos_weight=pos_weight, eval_metric='logloss',
+    random_state=42, n_jobs=-1
 )
-mlp.fit(X_train_s, y_train)
+xgb_model.fit(X_train, y_train)
+xgb_pred = xgb_model.predict(X_test)
+xgb_cv = cross_val_score(xgb_model, X, y, cv=5, scoring='accuracy')
+xgb_metrics = print_metrics("XGBoost", y_test, xgb_pred, xgb_cv)
 
-nn_pred = mlp.predict(X_test_s)
-nn_acc = accuracy_score(y_test, nn_pred)
-nn_prec = precision_score(y_test, nn_pred, zero_division=0)
-nn_rec = recall_score(y_test, nn_pred, zero_division=0)
-nn_f1 = f1_score(y_test, nn_pred, zero_division=0)
+xgb_importances = xgb_model.feature_importances_
+print(f"\n     Top Features:")
+xgb_sorted = np.argsort(xgb_importances)[::-1]
+for i in range(min(5, len(feature_cols))):
+    idx = xgb_sorted[i]
+    bar = "#" * int(xgb_importances[idx] * 40)
+    print(f"       {feature_cols[idx]:>15}: {xgb_importances[idx]:.4f} {bar}")
 
-nn_cv = cross_val_score(
-    MLPClassifier(hidden_layer_sizes=(20, 12, 8), activation='relu', solver='adam',
-                  max_iter=2000, random_state=42, early_stopping=True),
-    scaler.transform(X), y, cv=5, scoring='accuracy'
+# Export XGBoost as JSON trees
+booster = xgb_model.get_booster()
+xgb_trees_raw = booster.get_dump(dump_format='json')
+xgb_trees = [json.loads(t) for t in xgb_trees_raw]
+
+xgb_json = {
+    'model_type': 'XGBClassifier',
+    'n_estimators': int(xgb_model.n_estimators),
+    'max_depth': int(xgb_model.max_depth),
+    'learning_rate': float(xgb_model.learning_rate),
+    'base_score': 0.5,
+    'feature_names': feature_cols,
+    'feature_importances': [round(float(x), 6) for x in xgb_importances],
+    'trees': xgb_trees,
+    'metrics': xgb_metrics,
+    'training_info': training_info
+}
+
+xgb_path = os.path.join(ML_DIR, 'xgb_model.json')
+with open(xgb_path, 'w') as f:
+    json.dump(xgb_json, f)
+print(f"\n[OK] Saved: xgb_model.json ({os.path.getsize(xgb_path)/1024:.1f} KB)")
+
+
+# ══════════════════════════════════════════════════════════
+#  MODEL 3: Support Vector Machine (SVM)
+# ══════════════════════════════════════════════════════════
+print("\n" + "-" * 60)
+print("  STEP 5: Training Model 3 — SVM (RBF Kernel)")
+print("-" * 60)
+
+svm_model = SVC(
+    kernel='rbf', probability=True, class_weight='balanced',
+    C=1.0, gamma='scale', random_state=42
 )
+svm_model.fit(X_train_s, y_train)
+svm_pred = svm_model.predict(X_test_s)
+svm_cv = cross_val_score(svm_model, scaler.transform(X), y, cv=5, scoring='accuracy')
+svm_metrics = print_metrics("SVM (RBF)", y_test, svm_pred, svm_cv)
 
-print(f"[OK] Training complete (converged in {mlp.n_iter_} epochs)")
-print(f"     Accuracy:  {nn_acc:.4f}")
-print(f"     Precision: {nn_prec:.4f}")
-print(f"     Recall:    {nn_rec:.4f}")
-print(f"     F1 Score:  {nn_f1:.4f}")
-print(f"     Cross-val: {nn_cv.mean():.4f} (+/- {nn_cv.std():.4f})")
+# Export SVM: support vectors, dual coefficients, intercept, gamma, scaler
+gamma_val = 1.0 / (X_train_s.shape[1] * X_train_s.var()) if svm_model.gamma == 'scale' else svm_model.gamma
+# sklearn computes gamma='scale' as 1 / (n_features * X.var())
+# But the actual fitted gamma can be retrieved:
+gamma_val = float(svm_model._gamma)
 
-arch = [X.shape[1]] + list(mlp.hidden_layer_sizes) + [1]
-print(f"\n     Architecture: {' -> '.join(map(str, arch))}")
-for i, (w, b) in enumerate(zip(mlp.coefs_, mlp.intercepts_)):
-    act = 'ReLU' if i < len(mlp.coefs_) - 1 else 'Sigmoid'
-    print(f"       Layer {i+1}: ({w.shape[0]}, {w.shape[1]}) + ({b.shape[0]},)  [{act}]")
-
-# Export NN
-layers = []
-for i in range(len(mlp.coefs_)):
-    W = mlp.coefs_[i].T  # transpose to (output, input) for Node.js
-    b = mlp.intercepts_[i]
-    layers.append({
-        'W': [[round(float(w), 8) for w in row] for row in W],
-        'b': [round(float(x), 8) for x in b]
-    })
-
-nn_json = {
-    'model_type': 'MLPClassifier',
-    'architecture': [int(x) for x in arch],
-    'activation': 'relu',
-    'output_activation': mlp.out_activation_,
+svm_json = {
+    'model_type': 'SVC_RBF',
+    'kernel': 'rbf',
+    'C': float(svm_model.C),
+    'gamma': gamma_val,
+    'n_support': [int(x) for x in svm_model.n_support_],
+    'support_vectors': [[round(float(v), 8) for v in sv] for sv in svm_model.support_vectors_],
+    'dual_coef': [[round(float(v), 8) for v in row] for row in svm_model.dual_coef_],
+    'intercept': [round(float(v), 8) for v in svm_model.intercept_],
+    'classes': [int(c) for c in svm_model.classes_],
     'scaler': {
         'mean': [round(float(x), 8) for x in scaler.mean_],
         'scale': [round(float(x), 8) for x in scaler.scale_]
     },
-    'layers': layers,
-    'metrics': {
-        'accuracy': round(nn_acc, 4),
-        'precision': round(nn_prec, 4),
-        'recall': round(nn_rec, 4),
-        'f1': round(nn_f1, 4),
-        'cv_mean': round(float(nn_cv.mean()), 4),
-        'cv_std': round(float(nn_cv.std()), 4)
-    },
-    'training_info': {
-        'dataset': 'Autism Screening on Adults (Kaggle)',
-        'dataset_url': 'https://www.kaggle.com/datasets/andrewmvd/autism-screening-on-adults',
-        'total_samples': len(X),
-        'train_samples': len(X_train),
-        'test_samples': len(X_test),
-        'n_features': len(feature_cols),
-        'feature_names': feature_cols,
-        'epochs': int(mlp.n_iter_),
-        'best_val_score': round(float(mlp.best_validation_score_), 4)
-    }
+    'feature_names': feature_cols,
+    'metrics': svm_metrics,
+    'training_info': training_info
 }
 
-nn_path = os.path.join(ML_DIR, 'nn_model.json')
-with open(nn_path, 'w') as f:
-    json.dump(nn_json, f)
-print(f"\n[OK] Saved: nn_model.json ({os.path.getsize(nn_path)/1024:.1f} KB)")
+svm_path = os.path.join(ML_DIR, 'svm_model.json')
+with open(svm_path, 'w') as f:
+    json.dump(svm_json, f)
+print(f"\n[OK] Saved: svm_model.json ({os.path.getsize(svm_path)/1024:.1f} KB)")
+
+
+# ══════════════════════════════════════════════════════════
+#  MODEL 4: LightGBM Classifier
+# ══════════════════════════════════════════════════════════
+print("\n" + "-" * 60)
+print("  STEP 6: Training Model 4 — LightGBM Classifier")
+print("-" * 60)
+
+lgb_model = lgb.LGBMClassifier(
+    n_estimators=100, num_leaves=31, learning_rate=0.1,
+    is_unbalance=True, random_state=42, n_jobs=-1,
+    verbose=-1
+)
+lgb_model.fit(X_train, y_train)
+lgb_pred = lgb_model.predict(X_test)
+lgb_cv = cross_val_score(lgb_model, X, y, cv=5, scoring='accuracy')
+lgb_metrics = print_metrics("LightGBM", y_test, lgb_pred, lgb_cv)
+
+lgb_importances = lgb_model.feature_importances_.astype(float)
+lgb_importances_norm = lgb_importances / max(lgb_importances.sum(), 1e-10)
+print(f"\n     Top Features:")
+lgb_sorted = np.argsort(lgb_importances)[::-1]
+for i in range(min(5, len(feature_cols))):
+    idx = lgb_sorted[i]
+    bar = "#" * int(lgb_importances_norm[idx] * 40)
+    print(f"       {feature_cols[idx]:>15}: {lgb_importances_norm[idx]:.4f} {bar}")
+
+# Export LightGBM as JSON tree dump
+lgb_dump = lgb_model.booster_.dump_model()
+lgb_trees_data = lgb_dump['tree_info']
+
+lgb_json = {
+    'model_type': 'LGBMClassifier',
+    'n_estimators': int(lgb_model.n_estimators),
+    'num_leaves': int(lgb_model.num_leaves),
+    'learning_rate': float(lgb_model.learning_rate),
+    'feature_names': feature_cols,
+    'feature_importances': [round(float(x), 6) for x in lgb_importances_norm],
+    'trees': lgb_trees_data,
+    'metrics': lgb_metrics,
+    'training_info': training_info
+}
+
+lgb_path = os.path.join(ML_DIR, 'lgb_model.json')
+with open(lgb_path, 'w') as f:
+    json.dump(lgb_json, f)
+print(f"\n[OK] Saved: lgb_model.json ({os.path.getsize(lgb_path)/1024:.1f} KB)")
+
 
 # ── Done ──────────────────────────────────────────────────
 print("\n" + "=" * 60)
@@ -383,14 +456,18 @@ print("=" * 60)
 print(f"""
   Files created:
     {rf_path}
-    {nn_path}
+    {xgb_path}
+    {svm_path}
+    {lgb_path}
 
-  Model 1 — Random Forest:  {rf_acc*100:.1f}% accuracy, {rf.n_estimators} trees
-  Model 2 — Neural Network: {nn_acc*100:.1f}% accuracy, {' -> '.join(map(str, arch))}
+  Model 1 — Random Forest:  {rf_metrics['accuracy']*100:.1f}% accuracy, {rf.n_estimators} trees
+  Model 2 — XGBoost:        {xgb_metrics['accuracy']*100:.1f}% accuracy, {xgb_model.n_estimators} trees
+  Model 3 — SVM (RBF):      {svm_metrics['accuracy']*100:.1f}% accuracy, {len(svm_model.support_vectors_)} support vectors
+  Model 4 — LightGBM:       {lgb_metrics['accuracy']*100:.1f}% accuracy, {lgb_model.n_estimators} trees
 
   Next step:
     cd ..
     node server.js
 
-  The server will auto-detect and load both models on startup.
+  The server will auto-detect and load all 4 models on startup.
 """)
